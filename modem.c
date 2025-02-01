@@ -3,16 +3,42 @@
 #include <stdint.h>
 #include <complex.h>
 #include <math.h>
+#include <time.h>
+#include "log.h"
 #include "modem.h"
 #include "dsp.h"
 
-int main(void) {
+int main(int arg_count, char* arg_values[]) {
+	FILE *logfile;
+	logfile = fopen("md.log", "w");
+	LogNewline(logfile);
+	LogString(logfile, "Opened logfile.");
+
+	if (!logfile) {
+		printf("Unable to create logfile, exiting.\n");
+	}
+	LogNewline(logfile);
+	LogString(logfile, "Invoke arguments: ");
+	for (int i = 0; i < arg_count; i++) {
+		LogString(logfile, arg_values[i]);
+	}
+	
+	if (arg_count < 2) {
+		printf("Not enough arguments.\nUsage: modem <wavfile_name>\n");
+		LogString(logfile, "Not enough arguments, exiting.\n");
+		return -1;
+	}
+
 	WAVHeader_struct file_header;
-	printf("Size of WAV Header struct: %lu Bytes\n", sizeof(file_header));
-	
-	FILE *wav_file = fopen("./tone.wav", "rb");
+	FILE *wav_file = fopen(arg_values[1], "rb");
+	if (!wav_file) {
+		printf("Unable to open file %s, exiting.\n", arg_values[1]);
+		LogNewline(logfile);
+		LogString(logfile, "Unable to open wavefile: ");
+		LogString(logfile, arg_values[1]);
+		return -1;
+	}
 	fread(&file_header, 1, 44, wav_file);
-	
 	printf("Sample Rate: %d\n", file_header.SampleRate);
 	printf("Channel Count: %d\n", file_header.ChannelCount);
 	printf("Audio Format: %04X\n", file_header.AudioFormat);
@@ -25,40 +51,26 @@ int main(void) {
 	int16_t buffer[READ_SIZE];
 	int16_t buffer2[READ_SIZE];
 	int16_t buffer3[READ_SIZE * 2];
-	count = fread(&buffer, 1, READ_SIZE, wav_file);
-	int32_t total = 0;
-	while (count > 0) {
-		total += count;
-		//printf("Read %d bytes\n", count);
-		count = fread(&buffer, 1, READ_SIZE, wav_file);
-	}
-	printf("Size of final read: %d\n", count);
-	printf("Total bytes read: %d\n", total);
-
-
-	printf("Reading some data.\n");
-	fseek(wav_file, 44, SEEK_SET);
-	count = fread(&buffer, 2, 1000, wav_file);
-	int i = 0;
-	for (i = 0; i < count; i++) {
-		printf("%d\n", buffer[i]);
-	}
+	
+	AFSKDemod_struct AFSKDemodulator;
+	InitAFSK( \
+		logfile, \
+		&AFSKDemodulator, \
+		file_header.SampleRate, \
+		/* low cut freq */ 900, \
+		/* high cut freq */ 2500, \
+		/* tone 1 freq */ 1200, \
+		/* tone 2 freq */ 2200, \
+		/* symbol rate */ 1200 \
+	);
+	
 	
 	// Initialize the hilbert filter
 	FIR_struct HilbertFilter;
 	FIR_struct DelayFilter;
 	int hilbert_delay = InitHilbert(&HilbertFilter, &DelayFilter, 11);
-	printf("Hilbert Filter Tap Count: %d\n", HilbertFilter.TapCount);
-	for (i = 0; i < HilbertFilter.TapCount; i++) {
-		printf("%f,", HilbertFilter.Taps[i]);
-	}
 
-	printf("\nDelay Filter Tap Count: %d\n", DelayFilter.TapCount);
-	for (i = 0; i < DelayFilter.TapCount; i++) {
-		printf("%f,", DelayFilter.Taps[i]);
-	}
-	
-	FILE *output_file = fopen("./t1x.wav", "ab+");
+	FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
 	file_header.ChannelCount = 2;
 	file_header.BlockSize = 16;
@@ -80,7 +92,7 @@ int main(void) {
 	
 	int interleave_count;
 	while (count > 0) {
-		for (i = 0; i < count; i++) {
+		for (int i = 0; i < count; i++) {
 			// Put data in circ buff
 			PutCB(&CB1, (float)buffer[i]);
 			// Band-pass filter the data and put it in the next CB.
@@ -99,21 +111,7 @@ int main(void) {
 	
 	fclose(output_file);
 	fclose(wav_file);
-
-	printf("\nMade a FIR.\n");
-	printf("Sample Rate: %.2f\n", Filter.SampleRate);
-	printf("Tap Count: %d\n", Filter.TapCount);
-	printf("Gain: %6f\n", Filter.Gain);
-	printf("Taps: ");
-	for (i = 0; i < Filter.TapCount; i++) {
-		printf(" %.8f, ", Filter.Taps[i]);
-	}
-
-	printf("\nComplex Numbers:\n");
-	float complex x = 1 + 2*I;
-	printf("Complex number x = %.2f + %.2fi\n", creal(x), cimag(x));
-	x = x * 7;
-	printf("Scaling x by factor of 7: x = %.2f + %.2fi\n", creal(x), cimag(x));
+	fclose(logfile);
 
 	return 0;
 }

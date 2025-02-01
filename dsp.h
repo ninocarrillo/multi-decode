@@ -1,6 +1,7 @@
 #define MAX_FIR_TAP_COUNT 1000
 #include <stdint.h>
 #include <complex.h>
+#include <stdio.h>
 typedef struct {
 	float Taps[MAX_FIR_TAP_COUNT];
 	float Gain;
@@ -21,11 +22,15 @@ typedef struct {
 } ComplexCircularBuffer_struct;
 
 typedef struct {
-	FIR_struct Hilbert;
-	FIR_struct InputFilter1;
-	FIR_struct InputFilter2;
+	FIR_struct HilbertFilter;
+	FIR_struct DelayFilter;
+	FIR_struct InputFilter;
+	CircularBuffer_struct Buffer1;
+	CircularBuffer_struct Buffer2;
 	
 } AFSKDemod_struct;
+
+
 
 int InitHilbert(FIR_struct *, FIR_struct *, int);
 void PutCB(CircularBuffer_struct *, float);
@@ -37,3 +42,4 @@ void GenLowPassFIR(FIR_struct *, float, float, int);
 void GenHighPassFIR(FIR_struct *, float, float, int);
 void GenBandFIR(FIR_struct *, float, float, float, int);
 int InterleaveInt16(int16_t *, int16_t *, int16_t *, int);
+void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float);

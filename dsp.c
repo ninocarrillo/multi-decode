@@ -1,7 +1,10 @@
-#include "dsp.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
+#include "dsp.h"
+#include "log.h"
+
 
 int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_count) {
 	if (tap_count % 2) {
@@ -213,4 +216,50 @@ float CorrelateComplexCB(ComplexCircularBuffer_struct *buffer, FIR_struct *filte
 		result += filter->Taps[i] * buffer->Buffer[j--];
 	}
 	return cabs(result);
+}
+
+void InitAFSK(FILE*logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate) {
+	
+	LogNewline(logfile);
+	LogString(logfile, "Initializing AFSK Demodulator.");
+
+	// Create the input Bandpass filter spanning 5 milliseconds of input samples.
+	// Passband is 900-2500Hz.
+	int input_tap_count = 0.005 * sample_rate;
+	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Input filter tap count: ");
+	LogInt(logfile, demod->InputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->InputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->InputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Create a Hilbert transform filter spanning 5 milliseconds of input samples.
+	int hilbert_tap_count = 0.005 * sample_rate;
+	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Hilbert tap count: ");
+	LogInt(logfile, demod->HilbertFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->HilbertFilter.TapCount; i++) {
+		LogFloat(logfile, demod->HilbertFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	LogNewline(logfile);
+	LogString(logfile, "Delay tap count: ");
+	LogInt(logfile, demod->DelayFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->DelayFilter.TapCount; i++) {
+		LogFloat(logfile, demod->DelayFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	
+	// Generate tone correlator taps spanning 1 symbol.
+	
+
 }
