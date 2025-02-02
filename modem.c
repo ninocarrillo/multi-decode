@@ -7,6 +7,8 @@
 #include "log.h"
 #include "modem.h"
 #include "dsp.h"
+#include "ted.h"
+#include "ax25.h"
 
 int main(int arg_count, char* arg_values[]) {
 	FILE *logfile;
@@ -64,6 +66,17 @@ int main(int arg_count, char* arg_values[]) {
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 900 \
 	);
+
+	Data_Slicer_struct Slicer;
+	InitSlice2( \
+		&Slicer, \
+		file_header.SampleRate, \
+		/* symbol rate */ 1200, \
+		/* feedback parameter */ 0.8 \
+	);
+
+	AX25_Receiver_struct AX25_Receiver;
+	InitAX25(&AX25_Receiver);
 	
 
 	FILE *output_file = fopen("./output.wav", "wb");
@@ -76,22 +89,28 @@ int main(int arg_count, char* arg_values[]) {
 	
 	fseek(wav_file, 44, SEEK_SET);
 	count = fread(&buffer, 2, READ_SIZE, wav_file);
-	CircularBuffer_struct CB1, CB2, CB3;
-	CB1.Length = MAX_FIR_TAP_COUNT;
-	CB1.Index = 0;
-	CB2.Length = MAX_FIR_TAP_COUNT;
-	CB2.Index = 0;
-	CB3.Length = MAX_FIR_TAP_COUNT;
-	CB3.Index = 0;
-	FIR_struct Filter;
-	GenBandFIR(&Filter, 300, 3000, file_header.SampleRate, 101);
 	
 	int interleave_count;
+	int data;
+	LogNewline(logfile);
+	LogString(logfile, "Sliced Data: ");
+
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
+			if (Slicer.MatchDCD > 0) {
+				AFSKDemodulator.EnableEqualizerFeedback = 1;
+			} else {
+				AFSKDemodulator.EnableEqualizerFeedback = 0;
+			}
 			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, buffer[i]);
-			buffer2[i] = 0;
+			data = Slice2(&Slicer, buffer[i]);
+			if (data > 0) {
+				//LogHexByte(logfile, data);
+				AX25Receive(logfile, &AX25_Receiver, data);
+			}
+			buffer2[i] = Slicer.MatchDCD;
 		}
+
 		// Interleave the data for Stereo wav file.
 		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);
 		fwrite(&buffer3, 2, interleave_count, output_file);

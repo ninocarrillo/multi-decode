@@ -363,8 +363,17 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}
 
 	// Initialize buffers.
-	InitCB(&demod->Buffer1, MAX_FIR_TAP_COUNT);
-	InitCB(&demod->Buffer2, MAX_FIR_TAP_COUNT);
-	InitComplexCB(&demod->Buffer3, MAX_FIR_TAP_COUNT);
-	InitCB(&demod->Buffer4, MAX_FIR_TAP_COUNT);
+	InitCB(&demod->Buffer1, demod->InputFilter.TapCount);
+	InitCB(&demod->Buffer2, demod->HilbertFilter.TapCount);
+	InitComplexCB(&demod->Buffer3, demod->Mark.TapCount);
+	InitCB(&demod->Buffer4, demod->OutputFilter.TapCount);
+
+	// Calculate the sample delay.
+	demod->SampleDelay = 0;
+	demod->SampleDelay += demod->InputFilter.TapCount;
+	demod->SampleDelay += demod->HilbertFilter.TapCount;
+	demod->SampleDelay += demod->Mark.TapCount;
+	demod->SampleDelay += demod->OutputFilter.TapCount;
+
+	demod->EnableEqualizerFeedback = 0;
 }

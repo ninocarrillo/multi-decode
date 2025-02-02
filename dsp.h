@@ -34,6 +34,7 @@ typedef struct {
 	CircularBuffer_struct Buffer4;
 	FIR_struct OutputFilter;
 	int SampleDelay;
+	unsigned EnableEqualizerFeedback : 1;
 } AFSKDemod_struct;
 
 

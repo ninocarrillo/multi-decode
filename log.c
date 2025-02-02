@@ -23,3 +23,7 @@ void LogFloat(FILE *file, float value) {
 void LogInt(FILE *file, int value) {
 	fprintf(file, " %d", value);
 }
+
+void LogHexByte(FILE *file, int value) {
+	fprintf(file, " %2x", value & 0xFF);
+}
