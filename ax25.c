@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "ax25.h"
 #include "log.h"
 #include "crc.h"
@@ -8,14 +9,16 @@ void InitAX25(AX25_Receiver_struct *rx) {
     rx->PacketCount = 0;
     rx->BitIndex = 0;
     rx->WordIndex = 0;
-    rx->OneCounter = 0;
+    rx->OneCounter = 0;	
 }
 
-void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, int data) {
+void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, long int data, int bit_width) {
+	long int input_mask = 1;
+	input_mask = input_mask << (bit_width - 1);
     int j;
-    for (j = 0; j < 8; j++) { //step through each bit, MSB first
+    for (j = 0; j < bit_width; j++) { //step through each bit, MSB first
         // bit un-stuff
-        if (data & 0x80) { // one bit
+        if (data & input_mask) { // one bit
             rx->WorkingWord8 |= 0x80;
             rx->OneCounter++;
             rx->BitIndex++;
@@ -55,13 +58,6 @@ void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, int data) {
                 // ignore stuffed zero
             } else if (rx->OneCounter == 6) { // Flag frame end
                 if ((rx->WordIndex >= MIN_AX25_FRAME_LENGTH) && (rx->BitIndex == 7)) {
-                    LogNewline(logfile);
-                    LogString(logfile, "Candidate Packet Length: ");
-                    LogInt(logfile, rx->WordIndex);
-                    LogString(logfile, "\n");
-                    for (int i = 0; i < rx->WordIndex; i++) {
-                        LogHexByte(logfile, rx->Buffer[i]);
-                    }
                     rx->WordIndex -= 2;
                     if (CCITT16CheckCRC(rx->Buffer, rx->WordIndex)) {
                         rx->PacketCount++;

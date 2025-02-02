@@ -4,11 +4,13 @@
 #include <complex.h>
 #include <math.h>
 #include <time.h>
+#include <limits.h>
 #include "log.h"
 #include "modem.h"
 #include "dsp.h"
 #include "ted.h"
 #include "ax25.h"
+#include "lfsr.h"
 
 int main(int arg_count, char* arg_values[]) {
 	FILE *logfile;
@@ -74,6 +76,23 @@ int main(int arg_count, char* arg_values[]) {
 		/* symbol rate */ 1200, \
 		/* feedback parameter */ 0.8 \
 	);
+	
+	printf("Slicer Accumulator Bit Width: %d\n", Slicer.AccumulatorBitWidth);
+	
+	printf("bit width of int: %d\n", sizeof(int) * CHAR_BIT);
+	printf("bit width of long int: %d\n", sizeof(long int) * CHAR_BIT);
+	printf("bit width of long long int: %d\n", sizeof(long long int) * CHAR_BIT);
+	
+	unsigned long int x = -1;
+	long int y = 0xFFFFFFFFFFFFFFFF;
+	printf("printf unsigned long int as unsigned long int: %lx\n", x);
+	printf("printf unsigned long int as long int: %li\n", x);
+	printf("printf long int as long int: %li\n", y);
+	printf("printf long int as unsigned long int: %lx\n", y);
+	
+	
+	LFSR_struct LFSR;
+	InitLFSR(3, 0, &LFSR);
 
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
@@ -91,7 +110,7 @@ int main(int arg_count, char* arg_values[]) {
 	count = fread(&buffer, 2, READ_SIZE, wav_file);
 	
 	int interleave_count;
-	int data;
+	long int data;
 	LogNewline(logfile);
 	LogString(logfile, "Sliced Data: ");
 
@@ -105,8 +124,9 @@ int main(int arg_count, char* arg_values[]) {
 			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, buffer[i]);
 			data = Slice2(&Slicer, buffer[i]);
 			if (data > 0) {
-				//LogHexByte(logfile, data);
-				AX25Receive(logfile, &AX25_Receiver, data);
+				// Apply differential decoder
+				data = Unscramble(&LFSR, data, Slicer.AccumulatorBitWidth, Slicer.AccumulatorBitWidth);
+				AX25Receive(logfile, &AX25_Receiver, data, Slicer.AccumulatorBitWidth);
 			}
 			buffer2[i] = Slicer.MatchDCD;
 		}

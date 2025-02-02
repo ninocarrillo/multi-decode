@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <limits.h>
 #include "ted.h"
 
 void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate, float lock_rate) {
@@ -8,10 +9,12 @@ void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate
     slicer->BitIndex = 0;
     slicer->SyncDCD = 0;
     slicer->MatchDCD = 0;
+	slicer->AccumulatorBitWidth = (sizeof(long int) * CHAR_BIT) - 1;
+	slicer->DataAccumulator = 0;
 }
 
-int Slice2(Data_Slicer_struct *slicer, float sample) {
-    int result = -1;
+long int Slice2(Data_Slicer_struct *slicer, float sample) {
+    long int result = -1;
     slicer->Clock += slicer->ClockStep;
     if (slicer->Clock > 0.5) {
         slicer->Clock -= 1;
@@ -20,9 +23,10 @@ int Slice2(Data_Slicer_struct *slicer, float sample) {
         if (sample > 0) {
             slicer->DataAccumulator |= 1;
         }
-        if (slicer->BitIndex >= 8) {
+        if (slicer->BitIndex >= slicer->AccumulatorBitWidth) {
             slicer->BitIndex = 0;
-            result = slicer->DataAccumulator & 0xFF;
+            result = slicer->DataAccumulator;
+			slicer->DataAccumulator = 0;
         }
         slicer->MatchDCD--;
         if (slicer->MatchDCD < 0) {

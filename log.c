@@ -24,6 +24,14 @@ void LogInt(FILE *file, int value) {
 	fprintf(file, " %d", value);
 }
 
+void LogLongInt(FILE *file, long int value) {
+	fprintf(file, " %li", value);
+}
+
+void LogLongHex(FILE *file, long int value) {
+	fprintf(file, " %lx", value);
+}
+
 void LogHexByte(FILE *file, int value) {
 	fprintf(file, " %2x", value & 0xFF);
 }

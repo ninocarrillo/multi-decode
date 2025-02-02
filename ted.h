@@ -6,10 +6,11 @@ typedef struct {
     float LastSample;
     float LockRate;
     int BitIndex;
-    uint32_t DataAccumulator;
+    long int DataAccumulator;
     int SyncDCD;
     int MatchDCD;
+	int AccumulatorBitWidth;
 } Data_Slicer_struct;
 
 void InitSlice2(Data_Slicer_struct *, float, float, float);
-int Slice2(Data_Slicer_struct *, float);
+long int Slice2(Data_Slicer_struct *, float);

@@ -13,4 +13,4 @@ typedef struct {
 } AX25_Receiver_struct;
 
 void InitAX25(AX25_Receiver_struct *);
-void AX25Receive(FILE *, AX25_Receiver_struct *, int);
+void AX25Receive(FILE *, AX25_Receiver_struct *, long int, int);
