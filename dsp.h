@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <complex.h>
 #include <stdio.h>
+
 typedef struct {
 	float Taps[MAX_FIR_TAP_COUNT];
 	float Gain;
@@ -27,7 +28,7 @@ typedef struct {
 	CircularBuffer_struct Buffer2;
 	FIR_struct HilbertFilter;
 	FIR_struct DelayFilter;
-	CircularBuffer_struct Buffer3;
+	ComplexCircularBuffer_struct Buffer3;
 	FIR_struct Mark;
 	FIR_struct Space;
 	CircularBuffer_struct Buffer4;
@@ -39,6 +40,7 @@ typedef struct {
 
 int InitHilbert(FIR_struct *, FIR_struct *, int);
 void PutCB(CircularBuffer_struct *, float);
+void PutComplexCB(ComplexCircularBuffer_struct *, float complex);
 void CombineFIR(FIR_struct *, FIR_struct *);
 float FilterCB(CircularBuffer_struct *, FIR_struct *);
 float CorrelateComplexCB(ComplexCircularBuffer_struct *, FIR_struct *);
@@ -47,4 +49,5 @@ void GenLowPassFIR(FIR_struct *, float, float, int);
 void GenHighPassFIR(FIR_struct *, float, float, int);
 void GenBandFIR(FIR_struct *, float, float, float, int);
 int InterleaveInt16(int16_t *, int16_t *, int16_t *, int);
-void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float);
+void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float);
+float DemodAFSK(FILE *, AFSKDemod_struct *, float);

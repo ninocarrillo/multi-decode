@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
+#include <complex.h>
 #include "dsp.h"
 #include "log.h"
 
@@ -45,6 +46,16 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 	return delay;
 }
 
+void InitCB(CircularBuffer_struct *buffer, int length) {
+	buffer->Length = length;
+	buffer->Index = 0;
+}
+
+void InitComplexCB(ComplexCircularBuffer_struct *buffer, int length) {
+	buffer->Length = length;
+	buffer->Index = 0;
+}
+
 void IncrementCB(CircularBuffer_struct *buffer) {
 	buffer->Index++;
 	if (buffer->Index >= buffer->Length) {
@@ -53,6 +64,16 @@ void IncrementCB(CircularBuffer_struct *buffer) {
 }
 
 void PutCB(CircularBuffer_struct *buffer, float value) {
+	// Pre-increment circular buffer, put value.
+	buffer->Index++;
+	if (buffer->Index >= buffer->Length) {
+		buffer->Index = 0;
+	}
+	buffer->Buffer[buffer->Index] = value;
+	// Index points to newest value.
+}
+
+void PutComplexCB(ComplexCircularBuffer_struct *buffer, float complex value) {
 	// Pre-increment circular buffer, put value.
 	buffer->Index++;
 	if (buffer->Index >= buffer->Length) {
@@ -228,7 +249,42 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, i
 	}
 }
 
-void InitAFSK(FILE*logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate) {
+float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample) {
+	// Place sample in circular buffer.
+	PutCB(&demod->Buffer1, sample);
+
+	// Apply input filter.
+	float complex result = FilterCB(&demod->Buffer1, &demod->InputFilter);
+
+	// Place filtered sample in circular buffer.
+	PutCB(&demod->Buffer2, creal(result));
+
+	// Create quadrature signal.
+	result = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
+	
+	// Place quadrature signal in complex circular buffer.
+	PutComplexCB(&demod->Buffer3, result);
+	
+	// Equalize.
+
+	// Apply the mark correlator.
+	float mark = CorrelateComplexCB(&demod->Buffer3, &demod->Mark);
+
+	// Apply the space correlator.
+	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
+
+	result = mark - space;
+
+	// Place result in buffer.
+	PutCB(&demod->Buffer4, creal(result));
+
+	// Apply output filter.
+	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+
+	return creal(result) / 2;
+}
+
+void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut) {
 	
 	LogNewline(logfile);
 	LogString(logfile, "Initializing AFSK Demodulator.");
@@ -292,4 +348,23 @@ void InitAFSK(FILE*logfile, AFSKDemod_struct *demod, float sample_rate, float lo
 		LogFloat(logfile, demod->Space.Taps[i]);
 		LogString(logfile, ",");
 	}
+
+	// Create the output Lowpass filter spanning 5 milliseconds.
+	int output_tap_count = 0.005 * sample_rate;
+	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Output filter tap count: ");
+	LogInt(logfile, demod->OutputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->OutputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->OutputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Initialize buffers.
+	InitCB(&demod->Buffer1, MAX_FIR_TAP_COUNT);
+	InitCB(&demod->Buffer2, MAX_FIR_TAP_COUNT);
+	InitComplexCB(&demod->Buffer3, MAX_FIR_TAP_COUNT);
+	InitCB(&demod->Buffer4, MAX_FIR_TAP_COUNT);
 }

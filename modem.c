@@ -61,14 +61,10 @@ int main(int arg_count, char* arg_values[]) {
 		/* high cut freq */ 2500, \
 		/* tone 1 freq */ 1200, \
 		/* tone 2 freq */ 2200, \
-		/* symbol rate */ 1200 \
+		/* symbol rate */ 1200, \
+		/* output filter cutoff freq */ 900 \
 	);
 	
-	
-	// Initialize the hilbert filter
-	FIR_struct HilbertFilter;
-	FIR_struct DelayFilter;
-	int hilbert_delay = InitHilbert(&HilbertFilter, &DelayFilter, 11);
 
 	FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
@@ -93,15 +89,8 @@ int main(int arg_count, char* arg_values[]) {
 	int interleave_count;
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
-			// Put data in circ buff
-			PutCB(&CB1, (float)buffer[i]);
-			// Band-pass filter the data and put it in the next CB.
-			PutCB(&CB2, FilterCB(&CB1, &Filter));
-			// Apply Hilbert transform.
-			buffer[i] = (int16_t)FilterCB(&CB2, &HilbertFilter);
-			// Delay the real data.
-			buffer2[i] = (int16_t)FilterCB(&CB2, &DelayFilter);
-			//printf("%.3f\n", sqrt(pow(buffer[i], 2) + pow(buffer2[i], 2)));
+			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, buffer[i]);
+			buffer2[i] = 0;
 		}
 		// Interleave the data for Stereo wav file.
 		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);
