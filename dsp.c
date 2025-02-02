@@ -15,7 +15,7 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 		tap_count++;
 	}
 	
-	// Calculate the Hilbert filter taps
+	// Calculate the Hilbert and Half-band filter taps
 	int N = tap_count - 1;
 	int delay;
 	int n, i = 0;
@@ -28,21 +28,50 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 			// n is even
 			hilbert_filter->Taps[i] = 0;
 		}
+		if (n == 0) {
+			delay_filter->Taps[i] = 1;
+		} else {
+			delay_filter->Taps[i] = sin(n * M_PI / 2) / (n * M_PI);
+		}
 		i++;
 	}
 	hilbert_filter->TapCount = i;
+	delay_filter->TapCount = i;
 	
-	// Apply a Hann window to the filter.
-	//for (i = 0; i < tap_count; i++) {
-	//	hilbert_filter->Taps[i] *= pow(sin(M_PI * i / N), 2);
-	//}
-	delay++;
-	for (i = 0; i < delay; i++) {
-		delay_filter->Taps[i] = 0;
+	// Apply a Hann window to the filters.
+	for (i = 0; i < tap_count; i++) {
+		float window = pow(sin(M_PI * i / N), 2);
+		window = 1;
+		hilbert_filter->Taps[i] *= window;
+		delay_filter->Taps[i] *= window;
 	}
-	delay_filter->Taps[0] = 1;
-	delay_filter->TapCount = delay;
-	delay_filter->Gain = 1;
+
+
+	// Calculate the passband gain of the half band filter (sum of the positive taps)
+	delay_filter->Gain = 0;
+	for (i = 0; i < tap_count; i++) {
+		delay_filter->Gain += delay_filter->Taps[i];
+	}
+	
+	// Normalize the gain of both filters.
+	for (i = 0; i < tap_count; i++) {
+			hilbert_filter->Taps[i] *= (1.5/delay_filter->Gain);
+			delay_filter->Taps[i] *= (1/delay_filter->Gain);
+	}
+	delay_filter->Gain = 0;
+	for (i = 0; i < tap_count; i++) {
+		delay_filter->Gain += delay_filter->Taps[i];
+	}
+	hilbert_filter->Gain = delay_filter->Gain; 	
+
+
+	delay++;
+	// for (i = 0; i < delay; i++) {
+	// 	delay_filter->Taps[i] = 0;
+	// }
+	// delay_filter->Taps[0] = 1;
+	// delay_filter->TapCount = delay;
+	// delay_filter->Gain = 1;
 	return delay;
 }
 
@@ -245,7 +274,7 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, i
 	correlator->TapCount = tap_count;
 	for (int i = 0; i < tap_count; i++) {
 		float t = (M_PI * freq * 2 * i) / (sample_rate);
-		correlator->Taps[i] = sin(t);
+		correlator->Taps[i] = 4 * sin(t) / tap_count;
 	}
 }
 
@@ -281,7 +310,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample) {
 	// Apply output filter.
 	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
 
-	return creal(result) / 2;
+	return creal(result);
 }
 
 void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut) {
@@ -302,8 +331,8 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	// Create a Hilbert transform filter spanning 5 milliseconds of input samples.
-	int hilbert_tap_count = 0.005 * sample_rate;
+	// Create a Hilbert transform filter spanning 3.4 milliseconds of input samples.
+	int hilbert_tap_count = 0.0034 * sample_rate;
 	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
 	LogNewline(logfile);
 	LogString(logfile, "Hilbert tap count: ");
@@ -349,8 +378,8 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	// Create the output Lowpass filter spanning 5 milliseconds.
-	int output_tap_count = 0.005 * sample_rate;
+	// Create the output Lowpass filter spanning 4 symbols.
+	int output_tap_count = 4 * sample_rate / symbol_rate;
 	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
 	LogNewline(logfile);
 	LogString(logfile, "Output filter tap count: ");

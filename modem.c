@@ -74,21 +74,8 @@ int main(int arg_count, char* arg_values[]) {
 		&Slicer, \
 		file_header.SampleRate, \
 		/* symbol rate */ 1200, \
-		/* feedback parameter */ 0.8 \
+		/* feedback parameter */ 0.75 \
 	);
-	
-	printf("Slicer Accumulator Bit Width: %d\n", Slicer.AccumulatorBitWidth);
-	
-	printf("bit width of int: %d\n", sizeof(int) * CHAR_BIT);
-	printf("bit width of long int: %d\n", sizeof(long int) * CHAR_BIT);
-	printf("bit width of long long int: %d\n", sizeof(long long int) * CHAR_BIT);
-	
-	unsigned long int x = -1;
-	long int y = 0xFFFFFFFFFFFFFFFF;
-	printf("printf unsigned long int as unsigned long int: %lx\n", x);
-	printf("printf unsigned long int as long int: %li\n", x);
-	printf("printf long int as long int: %li\n", y);
-	printf("printf long int as unsigned long int: %lx\n", y);
 	
 	
 	LFSR_struct LFSR;
@@ -129,6 +116,10 @@ int main(int arg_count, char* arg_values[]) {
 				AX25Receive(logfile, &AX25_Receiver, data, Slicer.AccumulatorBitWidth);
 			}
 			buffer2[i] = Slicer.MatchDCD;
+
+			//PutCB(&AFSKDemodulator.Buffer2, buffer[i]);
+			//buffer2[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.HilbertFilter);
+			//buffer[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.DelayFilter);
 		}
 
 		// Interleave the data for Stereo wav file.
@@ -136,6 +127,7 @@ int main(int arg_count, char* arg_values[]) {
 		fwrite(&buffer3, 2, interleave_count, output_file);
 		count = fread(&buffer, 2, READ_SIZE, wav_file);
 	}
+	printf("Total Count: %d", AX25_Receiver.PacketCount);
 	
 	fclose(output_file);
 	fclose(wav_file);
