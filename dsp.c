@@ -32,9 +32,9 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 	hilbert_filter->TapCount = i;
 	
 	// Apply a Hann window to the filter.
-	for (i = 0; i < tap_count; i++) {
-		hilbert_filter->Taps[i] *= pow(sin(M_PI * i / N), 2);
-	}
+	//for (i = 0; i < tap_count; i++) {
+	//	hilbert_filter->Taps[i] *= pow(sin(M_PI * i / N), 2);
+	//}
 	delay++;
 	for (i = 0; i < delay; i++) {
 		delay_filter->Taps[i] = 0;
@@ -218,13 +218,22 @@ float CorrelateComplexCB(ComplexCircularBuffer_struct *buffer, FIR_struct *filte
 	return cabs(result);
 }
 
+void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, int tap_count) {
+	correlator->SampleRate = sample_rate;
+	correlator->Gain = 1;
+	correlator->TapCount = tap_count;
+	for (int i = 0; i < tap_count; i++) {
+		float t = (M_PI * freq * 2 * i) / (sample_rate);
+		correlator->Taps[i] = sin(t);
+	}
+}
+
 void InitAFSK(FILE*logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate) {
 	
 	LogNewline(logfile);
 	LogString(logfile, "Initializing AFSK Demodulator.");
 
 	// Create the input Bandpass filter spanning 5 milliseconds of input samples.
-	// Passband is 900-2500Hz.
 	int input_tap_count = 0.005 * sample_rate;
 	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
 	LogNewline(logfile);
@@ -259,7 +268,28 @@ void InitAFSK(FILE*logfile, AFSKDemod_struct *demod, float sample_rate, float lo
 		LogString(logfile, ",");
 	}
 	
-	// Generate tone correlator taps spanning 1 symbol.
-	
+	// Generate mark correlator taps spanning 1 symbol.
+	int correlator_tap_count = sample_rate / symbol_rate;
+	InitToneCorrelator(&demod->Mark, tone1, sample_rate, correlator_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Mark Correlator Tap Count: ");
+	LogInt(logfile, demod->Mark.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->Mark.TapCount; i++) {
+		LogFloat(logfile, demod->Mark.Taps[i]);
+		LogString(logfile, ",");
+	}	
 
+	// Generate space correlator taps spanning 1 symbol.
+	InitToneCorrelator(&demod->Space, tone2, sample_rate, correlator_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Space Correlator Tap Count: ");
+	LogInt(logfile, demod->Space.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->Space.TapCount; i++) {
+		LogFloat(logfile, demod->Space.Taps[i]);
+		LogString(logfile, ",");
+	}
 }

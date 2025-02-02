@@ -22,12 +22,17 @@ typedef struct {
 } ComplexCircularBuffer_struct;
 
 typedef struct {
+	CircularBuffer_struct Buffer1;
+	FIR_struct InputFilter;
+	CircularBuffer_struct Buffer2;
 	FIR_struct HilbertFilter;
 	FIR_struct DelayFilter;
-	FIR_struct InputFilter;
-	CircularBuffer_struct Buffer1;
-	CircularBuffer_struct Buffer2;
-	
+	CircularBuffer_struct Buffer3;
+	FIR_struct Mark;
+	FIR_struct Space;
+	CircularBuffer_struct Buffer4;
+	FIR_struct OutputFilter;
+	int SampleDelay;
 } AFSKDemod_struct;
 
 
