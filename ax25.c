@@ -10,6 +10,7 @@ void InitAX25(AX25_Receiver_struct *rx) {
     rx->BitIndex = 0;
     rx->WordIndex = 0;
     rx->OneCounter = 0;	
+	rx->NewPacket = 0;
 }
 
 void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, long int data, int bit_width) {
@@ -60,6 +61,7 @@ void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, long int data, int bit
                 if ((rx->WordIndex >= MIN_AX25_FRAME_LENGTH) && (rx->BitIndex == 7)) {
                     rx->WordIndex -= 2;
                     if (CCITT16CheckCRC(rx->Buffer, rx->WordIndex)) {
+						rx->NewPacket = 1;
                         rx->PacketCount++;
                         rx->CRC = (uint16_t)rx->Buffer[rx->WordIndex];
                         rx->CRC |= ((uint16_t)rx->Buffer[rx->WordIndex + 1]) << 8;

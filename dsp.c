@@ -7,7 +7,7 @@
 #include "log.h"
 
 
-void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float mu) {
+void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float complex mu) {
 	if (tap_count % 2) {
 		// tap_count is odd, this is good.
 	} else {
@@ -23,6 +23,33 @@ void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float mu) {
 	eq->Filter.TapCount = tap_count;
 	eq->Buffer.Length = tap_count;
 	eq->Buffer.Index = 0;
+	eq->mu = mu;
+}
+
+float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
+	PutComplexCB(&eq->Buffer, sample);
+	return FilterComplexCB(&eq->Buffer, &eq->Filter);
+}
+
+
+float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
+	PutComplexCB(&eq->Buffer, sample);
+	float complex accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
+	float complex error = 1 - (cabs(accumulator) / 16384);
+	float complex adjust = (accumulator / 16384) * error * eq->mu;
+	printf("%.2f+%.2fj\n", creal(adjust), cimag(adjust));
+		
+	int i, j;
+	j = eq->Buffer.Index + 1;
+	for (i = 0; i < eq->Filter.TapCount; i++) {
+		if (j >= eq->Buffer.Length) {
+			j = 0;
+		}
+		eq->Filter.Taps[i] += adjust * (conj(eq->Buffer.Buffer[j]) / 16384);
+		j++;
+	}
+
+	return accumulator;
 }
 
 int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_count) {
@@ -82,14 +109,7 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 	}
 	hilbert_filter->Gain = delay_filter->Gain; 	
 
-
 	delay++;
-	// for (i = 0; i < delay; i++) {
-	// 	delay_filter->Taps[i] = 0;
-	// }
-	// delay_filter->Taps[0] = 1;
-	// delay_filter->TapCount = delay;
-	// delay_filter->Gain = 1;
 	return delay;
 }
 
@@ -149,6 +169,27 @@ float FilterCB(CircularBuffer_struct *buffer, FIR_struct *filter) {
 	}
 	return result;
 }
+
+float complex FilterComplexCB(ComplexCircularBuffer_struct *buffer, ComplexFIR_struct *filter) {
+	int i, j;
+	int n;
+	float complex result = 0;
+	// Determine limiting dimension
+	if (buffer->Length > filter->TapCount) {
+		n = filter->TapCount;
+	} else {
+		n = buffer->Length;
+	}
+	j = buffer->Index;
+	for (i = (n-1); i >= 0; i--) {
+		if (j < 0) {
+			j += buffer->Length;
+		}
+		result += filter->Taps[i] * buffer->Buffer[j--];
+	}
+	return result;
+}
+
 
 float sinc(float value) {
 	float result;
@@ -296,7 +337,7 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, i
 	}
 }
 
-float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample) {
+float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
 	// Place sample in circular buffer.
 	PutCB(&demod->Buffer1, sample);
 
@@ -309,10 +350,15 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample) {
 	// Create quadrature signal.
 	result = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
 	
+	// Equalize.
+	if (carrier_detect > 0) {
+		result = CMAEqFeedback(&demod->EQ, result);
+	} else {
+		result = CMAEq(&demod->EQ, result);
+	}
+
 	// Place quadrature signal in complex circular buffer.
 	PutComplexCB(&demod->Buffer3, result);
-	
-	// Equalize.
 
 	// Apply the mark correlator.
 	float mark = CorrelateComplexCB(&demod->Buffer3, &demod->Mark);
@@ -331,7 +377,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample) {
 	return creal(result);
 }
 
-void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut) {
+void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut, float mu) {
 	
 	LogNewline(logfile);
 	LogString(logfile, "Initializing AFSK Demodulator.");
@@ -371,7 +417,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	InitCMAEqualizer(&demod->EQ, 3 * sample_rate / symbol_rate, 0.01);
+	InitCMAEqualizer(&demod->EQ, 3 * sample_rate / symbol_rate, mu);
 	LogNewline(logfile);
 	LogString(logfile, "CMA Equalizer tap count: ");
 	LogInt(logfile, demod->EQ.Filter.TapCount);
@@ -433,5 +479,4 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	demod->SampleDelay += demod->Mark.TapCount;
 	demod->SampleDelay += demod->OutputFilter.TapCount;
 
-	demod->EnableEqualizerFeedback = 0;
 }

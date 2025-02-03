@@ -10,6 +10,7 @@ typedef struct {
     int RxByteCount;
     uint8_t Buffer[AX25_MAX_RX_BUFFER];
     int PacketCount;
+	int NewPacket;
 } AX25_Receiver_struct;
 
 void InitAX25(AX25_Receiver_struct *);

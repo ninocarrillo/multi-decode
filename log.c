@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <time.h>
-
+#include <complex.h>
 #include "log.h"
 
 void LogNewline(FILE *file) {
@@ -18,6 +18,10 @@ void LogString(FILE *file, char* message) {
 
 void LogFloat(FILE *file, float value) {
 	fprintf(file, " %f", value);
+}
+
+void LogComplex(FILE *file, float complex value) {
+	fprintf(file, " %.2f+%.2fj ", creal(value), cimag(value));
 }
 
 void LogInt(FILE *file, int value) {

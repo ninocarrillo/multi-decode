@@ -66,7 +66,8 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 1 freq */ 1200, \
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
-		/* output filter cutoff freq */ 900 \
+		/* output filter cutoff freq */ 900, \
+		/* equalizer gain mu */ 0.0025 \
 	);
 
 	Data_Slicer_struct Slicer;
@@ -103,17 +104,20 @@ int main(int arg_count, char* arg_values[]) {
 
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
-			if (Slicer.MatchDCD > 0) {
-				AFSKDemodulator.EnableEqualizerFeedback = 1;
-			} else {
-				AFSKDemodulator.EnableEqualizerFeedback = 0;
-			}
-			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, buffer[i]);
+			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, buffer[i], Slicer.MatchDCD);
 			data = Slice2(&Slicer, buffer[i]);
 			if (data > 0) {
 				// Apply differential decoder
 				data = Unscramble(&LFSR, data, Slicer.AccumulatorBitWidth, Slicer.AccumulatorBitWidth);
 				AX25Receive(logfile, &AX25_Receiver, data, Slicer.AccumulatorBitWidth);
+				if (AX25_Receiver.NewPacket) {
+					AX25_Receiver.NewPacket = 0;
+					LogNewline(logfile);
+					LogString(logfile, "Equalizer Taps: ");
+					for (int i = 0; i < AFSKDemodulator.EQ.Filter.TapCount; i++) {
+						LogComplex(logfile, AFSKDemodulator.EQ.Filter.Taps[i]);
+					}
+				}
 			}
 			buffer2[i] = Slicer.MatchDCD;
 

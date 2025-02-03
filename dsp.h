@@ -11,11 +11,11 @@ typedef struct {
 } FIR_struct;
 
 typedef struct {
-	float Taps[MAX_FIR_TAP_COUNT];
+	float complex Taps[MAX_FIR_TAP_COUNT];
 	float Gain;
 	float SampleRate;
 	int TapCount;
-} Complex_FIR_struct;
+} ComplexFIR_struct;
 
 typedef struct {
 	float Buffer[MAX_FIR_TAP_COUNT];
@@ -31,9 +31,9 @@ typedef struct {
 
 
 typedef struct {
-	Complex_FIR_struct Filter;
+	ComplexFIR_struct Filter;
 	ComplexCircularBuffer_struct Buffer;
-	float mu;
+	complex float mu;
 } CMA_Equalizer_struct;
 
 typedef struct {
@@ -49,7 +49,6 @@ typedef struct {
 	CircularBuffer_struct Buffer4;
 	FIR_struct OutputFilter;
 	int SampleDelay;
-	unsigned EnableEqualizerFeedback : 1;
 } AFSKDemod_struct;
 
 
@@ -59,11 +58,15 @@ void PutCB(CircularBuffer_struct *, float);
 void PutComplexCB(ComplexCircularBuffer_struct *, float complex);
 void CombineFIR(FIR_struct *, FIR_struct *);
 float FilterCB(CircularBuffer_struct *, FIR_struct *);
+float complex FilterComplexCB(ComplexCircularBuffer_struct *, ComplexFIR_struct *);
 float CorrelateComplexCB(ComplexCircularBuffer_struct *, FIR_struct *);
 float sinc(float);
 void GenLowPassFIR(FIR_struct *, float, float, int);
 void GenHighPassFIR(FIR_struct *, float, float, int);
 void GenBandFIR(FIR_struct *, float, float, float, int);
 int InterleaveInt16(int16_t *, int16_t *, int16_t *, int);
-void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float);
-float DemodAFSK(FILE *, AFSKDemod_struct *, float);
+void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float, float);
+float DemodAFSK(FILE *, AFSKDemod_struct *, float, int);
+float complex CMAEqFeedback(CMA_Equalizer_struct *, float complex);
+float complex CMAEq(CMA_Equalizer_struct *, float complex);
+void InitCMAEqualizer(CMA_Equalizer_struct *, int, float complex);
