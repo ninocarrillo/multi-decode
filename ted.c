@@ -51,6 +51,9 @@ long int Slice2(Data_Slicer_struct *slicer, float sample) {
         if ((slicer->DataAccumulator & 0xFFFFFF) == 0x808080) {
             slicer->MatchDCD = 120;
         }
+        if ((slicer->DataAccumulator & 0xFFFFFF) == 0x7F7F7F) {
+            slicer->MatchDCD = 120;
+        }
 		if ((slicer->DataAccumulator & 0xFFFFFF) == 0x555555) {
             slicer->MatchDCD = 120;
         }

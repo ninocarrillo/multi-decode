@@ -31,21 +31,19 @@ float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
 	return FilterComplexCB(&eq->Buffer, &eq->Filter);
 }
 
-
+#define NORM 4000
 float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
 	PutComplexCB(&eq->Buffer, sample);
 	float complex accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
-	float complex error = 1 - (cabs(accumulator) / 16384);
-	float complex adjust = (accumulator / 16384) * error * eq->mu;
-	printf("%.2f+%.2fj\n", creal(adjust), cimag(adjust));
-		
+	float complex error = 1 - (cabs(accumulator) / NORM);
+	float complex adjust = (accumulator / NORM) * error * eq->mu;
 	int i, j;
 	j = eq->Buffer.Index + 1;
 	for (i = 0; i < eq->Filter.TapCount; i++) {
 		if (j >= eq->Buffer.Length) {
 			j = 0;
 		}
-		eq->Filter.Taps[i] += adjust * (conj(eq->Buffer.Buffer[j]) / 16384);
+		eq->Filter.Taps[i] += adjust * (conj(eq->Buffer.Buffer[j]) / NORM);
 		j++;
 	}
 

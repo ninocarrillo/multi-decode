@@ -67,7 +67,7 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 900, \
-		/* equalizer gain mu */ 0.0025 \
+		/* equalizer gain mu */ /*0.002*/ 0 \
 	);
 
 	Data_Slicer_struct Slicer;
