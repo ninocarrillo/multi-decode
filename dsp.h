@@ -11,6 +11,13 @@ typedef struct {
 } FIR_struct;
 
 typedef struct {
+	float Taps[MAX_FIR_TAP_COUNT];
+	float Gain;
+	float SampleRate;
+	int TapCount;
+} Complex_FIR_struct;
+
+typedef struct {
 	float Buffer[MAX_FIR_TAP_COUNT];
 	int Index;
 	int Length;
@@ -22,12 +29,20 @@ typedef struct {
 	int Length;
 } ComplexCircularBuffer_struct;
 
+
+typedef struct {
+	Complex_FIR_struct Filter;
+	ComplexCircularBuffer_struct Buffer;
+	float mu;
+} CMA_Equalizer_struct;
+
 typedef struct {
 	CircularBuffer_struct Buffer1;
 	FIR_struct InputFilter;
 	CircularBuffer_struct Buffer2;
 	FIR_struct HilbertFilter;
 	FIR_struct DelayFilter;
+	CMA_Equalizer_struct EQ;
 	ComplexCircularBuffer_struct Buffer3;
 	FIR_struct Mark;
 	FIR_struct Space;

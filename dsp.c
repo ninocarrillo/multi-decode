@@ -7,6 +7,24 @@
 #include "log.h"
 
 
+void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float mu) {
+	if (tap_count % 2) {
+		// tap_count is odd, this is good.
+	} else {
+		// make tap_count odd.
+		tap_count++;
+	}
+
+	for (int i = 0; i < tap_count; i++) {
+		eq->Filter.Taps[i] = 0;
+		eq->Buffer.Buffer[i] = 0;
+	}
+	eq->Filter.Taps[tap_count / 2] = 1;
+	eq->Filter.TapCount = tap_count;
+	eq->Buffer.Length = tap_count;
+	eq->Buffer.Index = 0;
+}
+
 int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_count) {
 	if (tap_count % 2) {
 		// tap_count is odd, this is good.
@@ -350,6 +368,17 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	LogString(logfile, "Taps: ");
 	for (int i = 0; i < demod->DelayFilter.TapCount; i++) {
 		LogFloat(logfile, demod->DelayFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	InitCMAEqualizer(&demod->EQ, 3 * sample_rate / symbol_rate, 0.01);
+	LogNewline(logfile);
+	LogString(logfile, "CMA Equalizer tap count: ");
+	LogInt(logfile, demod->EQ.Filter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->EQ.Filter.TapCount; i++) {
+		LogFloat(logfile, demod->EQ.Filter.Taps[i]);
 		LogString(logfile, ",");
 	}
 	
