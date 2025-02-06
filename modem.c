@@ -119,7 +119,8 @@ int main(int arg_count, char* arg_values[]) {
 					}
 				}
 			}
-			buffer2[i] = Slicer.MatchDCD;
+			buffer2[i] = 4096 *  creal(AFSKDemodulator.Buffer3.Buffer[AFSKDemodulator.Buffer3.Index]);
+			
 
 			//PutCB(&AFSKDemodulator.Buffer2, buffer[i]);
 			//buffer2[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.HilbertFilter);

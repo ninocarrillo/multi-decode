@@ -14,15 +14,16 @@ void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate
 }
 int ZDetect(float old_y, float new_y) {
     int crossed = 0;
+	float zero = 0;
     // Detect zero crossing.
-    if (old_y > 0) {
+    if (old_y > zero) {
         // Last sample was positive.
-        if (new_y <= 0) {
+        if (new_y <= zero) {
             crossed = 1;
         }
-    } else if (old_y <= 0) {
+    } else if (old_y <= zero) {
         // Last sample was negative.
-        if (new_y > 0) {
+        if (new_y > zero) {
             crossed = 1;
         }
     }

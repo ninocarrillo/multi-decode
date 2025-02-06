@@ -21,7 +21,7 @@ void LogFloat(FILE *file, float value) {
 }
 
 void LogComplex(FILE *file, float complex value) {
-	fprintf(file, " %.2f+%.2fj ", creal(value), cimag(value));
+	fprintf(file, " %.6f+%.6fj ", creal(value), cimag(value));
 }
 
 void LogInt(FILE *file, int value) {

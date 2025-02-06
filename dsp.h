@@ -37,6 +37,19 @@ typedef struct {
 } CMA_Equalizer_struct;
 
 typedef struct {
+    float LastValue;
+	float PosPeak;
+	float NegPeak;
+	float Zero;
+    float Envelope;
+    float AttackRate;
+    float DecayRate;
+    float SustainPeriod;
+    int SustainCount;
+} EnvelopeDetector_struct;
+
+typedef struct {
+	EnvelopeDetector_struct EnvelopeDetector;
 	CircularBuffer_struct Buffer1;
 	FIR_struct InputFilter;
 	CircularBuffer_struct Buffer2;
@@ -70,3 +83,5 @@ float DemodAFSK(FILE *, AFSKDemod_struct *, float, int);
 float complex CMAEqFeedback(CMA_Equalizer_struct *, float complex);
 float complex CMAEq(CMA_Equalizer_struct *, float complex);
 void InitCMAEqualizer(CMA_Equalizer_struct *, int, float complex);
+float EnvelopeDetect(EnvelopeDetector_struct *, float);
+void InitEnvelopeDetector(EnvelopeDetector_struct *, float, float, float);

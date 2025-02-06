@@ -6,6 +6,58 @@
 #include "dsp.h"
 #include "log.h"
 
+void InitEnvelopeDetector(EnvelopeDetector_struct *detector, float attack, float decay, float sustain) {
+	detector->AttackRate = attack;
+	detector->DecayRate = decay;
+	detector->SustainPeriod = sustain;
+	detector->SustainCount = 0;
+	detector->Zero = 0;
+	detector->Envelope = 0;
+	detector->PosPeak = 0;
+	detector->NegPeak = 0;
+	detector->LastValue = 0;
+}
+
+float EnvelopeDetect(EnvelopeDetector_struct *detector, float signal_value) {
+    // Perform peak detection, record magnitude of peaks, return filtered peak
+    // value.
+    
+    // Determine if signal is rising or falling.
+    if (signal_value > detector->LastValue) {
+        // Signal is rising.
+        if (signal_value >= detector->PosPeak) {
+            if ((detector->PosPeak + detector->AttackRate) > signal_value) {
+                detector->PosPeak = signal_value;
+            } else {
+                detector->PosPeak += detector->AttackRate;
+            }
+            detector->SustainCount = 0;
+        }
+    } else {
+		// Signal is falling.
+		if (signal_value <= detector->NegPeak) {
+			if ((detector->NegPeak - detector->AttackRate) < signal_value) {
+				detector->NegPeak = signal_value;
+			} else {
+				detector->NegPeak -= detector->AttackRate;
+			}
+			detector->SustainCount = 0;
+		}
+	}
+    detector->LastValue = signal_value;
+	
+    // Apply a Sustain/Decay process.
+    if (detector->SustainCount++ >= detector->SustainPeriod) {
+        // Sustain interval has elapsed.
+        // Decay the envelope.
+        detector->PosPeak -= detector->DecayRate;
+		detector->NegPeak += detector->DecayRate;
+    }
+	detector->Envelope = detector->PosPeak - detector->NegPeak;
+	detector->Zero = detector->NegPeak + (detector->Envelope / 2);
+    // Return the envelope.
+    return detector->Envelope;
+}
 
 void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float complex mu) {
 	if (tap_count % 2) {
@@ -31,20 +83,20 @@ float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
 	return FilterComplexCB(&eq->Buffer, &eq->Filter);
 }
 
-#define NORM 4000
+#define NORM 1
 float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
 	PutComplexCB(&eq->Buffer, sample);
 	float complex accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
-	float complex error = 1 - (cabs(accumulator) / NORM);
-	float complex adjust = (accumulator / NORM) * error * eq->mu;
+	float complex error = cabs(accumulator) - 1;
+	float complex adjust = accumulator * error * eq->mu;
 	int i, j;
-	j = eq->Buffer.Index + 1;
+	j = eq->Buffer.Index;
 	for (i = 0; i < eq->Filter.TapCount; i++) {
-		if (j >= eq->Buffer.Length) {
-			j = 0;
+		eq->Filter.Taps[i] += adjust * conj(eq->Buffer.Buffer[j]);
+		j--;
+		if (j < 0) {
+			j += eq->Buffer.Length;
 		}
-		eq->Filter.Taps[i] += adjust * (conj(eq->Buffer.Buffer[j]) / NORM);
-		j++;
 	}
 
 	return accumulator;
@@ -336,6 +388,11 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, i
 }
 
 float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
+	// Apply AGC, normalize to 1.0
+	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, sample);
+	if (envelope > 0) {
+		sample = sample / (envelope);
+	}
 	// Place sample in circular buffer.
 	PutCB(&demod->Buffer1, sample);
 
@@ -367,7 +424,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	result = mark - space;
 
 	// Place result in buffer.
-	PutCB(&demod->Buffer4, creal(result));
+	PutCB(&demod->Buffer4, creal(8192 * result));
 
 	// Apply output filter.
 	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
@@ -414,8 +471,11 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogFloat(logfile, demod->DelayFilter.Taps[i]);
 		LogString(logfile, ",");
 	}
+	
+	// Initialize the envelope detector
+	InitEnvelopeDetector(&demod->EnvelopeDetector, 50, 50, sample_rate / symbol_rate);
 
-	InitCMAEqualizer(&demod->EQ, 0.5 * sample_rate / symbol_rate, mu);
+	InitCMAEqualizer(&demod->EQ, 1 * sample_rate / symbol_rate, mu);
 	LogNewline(logfile);
 	LogString(logfile, "CMA Equalizer tap count: ");
 	LogInt(logfile, demod->EQ.Filter.TapCount);
