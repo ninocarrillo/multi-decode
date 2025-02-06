@@ -415,7 +415,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	InitCMAEqualizer(&demod->EQ, 3 * sample_rate / symbol_rate, mu);
+	InitCMAEqualizer(&demod->EQ, 0.5 * sample_rate / symbol_rate, mu);
 	LogNewline(logfile);
 	LogString(logfile, "CMA Equalizer tap count: ");
 	LogInt(logfile, demod->EQ.Filter.TapCount);
