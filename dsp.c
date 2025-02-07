@@ -443,7 +443,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	LogNewline(logfile);
 	LogString(logfile, "Initializing AFSK Demodulator.");
 
-	// Create the input Bandpass filter spanning 5 milliseconds of input samples.
+	// Create the input Bandpass filter spanning 7 milliseconds of input samples.
 	int input_tap_count = 0.007 * sample_rate;
 	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
 	LogNewline(logfile);
@@ -477,9 +477,6 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogFloat(logfile, demod->DelayFilter.Taps[i]);
 		LogString(logfile, ",");
 	}
-	
-	// Initialize the envelope detector
-	InitEnvelopeDetector(&demod->EnvelopeDetector, 500, 1, 1);
 
 	InitCMAEqualizer(&demod->EQ, cma_span, cma_mu);
 	//InitCMAEqualizer(&demod->EQ, 9, mu);
