@@ -427,7 +427,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	result = mark - space;
 
 	// Place result in buffer.
-	PutCB(&demod->Buffer4, creal(8192 * result));
+	PutCB(&demod->Buffer4, creal(1024 * result));
 
 	// Apply output filter.
 	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);

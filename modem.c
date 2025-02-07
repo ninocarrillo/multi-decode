@@ -51,7 +51,7 @@ int main(int arg_count, char* arg_values[]) {
 	printf("Bytes Per Block: %d\n", file_header.BytesPerBlock);
 	printf("Data Size: %d\n", file_header.DataSize);
 	int32_t count;
-#define READ_SIZE 4096
+#define READ_SIZE 65536
 	int16_t buffer[READ_SIZE];
 	int16_t buffer2[READ_SIZE];
 	int16_t buffer3[READ_SIZE * 2];
@@ -67,7 +67,7 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1000, \
-		/* equalizer gain mu */ /*0.002*/ 0.5 \
+		/* equalizer gain mu */ /*0.002*/ 0.5  \
 	);
 
 	Data_Slicer_struct Slicer;
@@ -119,7 +119,7 @@ int main(int arg_count, char* arg_values[]) {
 					}
 				}
 			}
-			buffer2[i] = 4096 *  creal(AFSKDemodulator.Buffer3.Buffer[AFSKDemodulator.Buffer3.Index]);
+			buffer2[i] = 1024 *  creal(AFSKDemodulator.Buffer3.Buffer[AFSKDemodulator.Buffer3.Index]);
 			
 
 			//PutCB(&AFSKDemodulator.Buffer2, buffer[i]);

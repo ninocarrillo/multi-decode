@@ -9,6 +9,7 @@ typedef struct {
     long int DataAccumulator;
     int SyncDCD;
     int MatchDCD;
+    int DCDLoad;
 	int AccumulatorBitWidth;
 } Data_Slicer_struct;
 

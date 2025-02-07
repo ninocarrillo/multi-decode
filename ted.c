@@ -3,6 +3,7 @@
 #include "ted.h"
 
 void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate, float lock_rate) {
+    slicer->DCDLoad = 120;
     slicer->ClockStep = symbol_rate / sample_rate;
     slicer->Clock = 0;
     slicer->LockRate = lock_rate;
@@ -50,13 +51,13 @@ long int Slice2(Data_Slicer_struct *slicer, float sample) {
             slicer->MatchDCD = -1;
         }
         if ((slicer->DataAccumulator & 0xFFFFFF) == 0x808080) {
-            slicer->MatchDCD = 120;
+            slicer->MatchDCD = slicer->DCDLoad;
         }
         if ((slicer->DataAccumulator & 0xFFFFFF) == 0x7F7F7F) {
-            slicer->MatchDCD = 120;
+            slicer->MatchDCD = slicer->DCDLoad;
         }
 		if ((slicer->DataAccumulator & 0xFFFFFF) == 0x555555) {
-            slicer->MatchDCD = 120;
+            slicer->MatchDCD = slicer->DCDLoad;
         }
     }
 	if (ZDetect(slicer->LastSample, sample)) {
