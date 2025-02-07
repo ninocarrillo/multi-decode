@@ -391,11 +391,7 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, f
 }
 
 float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
-	// Apply AGC, normalize to 1.0
-	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, sample);
-	if (envelope > 0) {
-		//sample = sample / (envelope);
-	}
+
 	// Place sample in circular buffer.
 	PutCB(&demod->Buffer1, sample);
 
