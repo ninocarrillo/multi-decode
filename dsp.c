@@ -83,19 +83,21 @@ float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
 	return FilterComplexCB(&eq->Buffer, &eq->Filter);
 }
 
-#define NORM 1
 float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
 	PutComplexCB(&eq->Buffer, sample);
 	float complex accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
 	float complex error = cabs(accumulator) - 1;
 	float complex adjust = accumulator * error * eq->mu;
 	int i, j;
-	j = eq->Buffer.Index;
+	j = eq->Buffer.Index + 1;
 	for (i = 0; i < eq->Filter.TapCount; i++) {
-		eq->Filter.Taps[i] += adjust * conj(eq->Buffer.Buffer[j]);
-		j--;
+		eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
+		j++;
 		if (j < 0) {
 			j += eq->Buffer.Length;
+		}
+		if (j >= eq->Buffer.Length) {
+			j = 0;
 		}
 	}
 
@@ -377,13 +379,14 @@ float CorrelateComplexCB(ComplexCircularBuffer_struct *buffer, FIR_struct *filte
 	return cabs(result);
 }
 
-void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, int tap_count) {
+void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, float symbol_rate) {
+	int tap_count = sample_rate / symbol_rate;
 	correlator->SampleRate = sample_rate;
 	correlator->Gain = 1;
 	correlator->TapCount = tap_count;
 	for (int i = 0; i < tap_count; i++) {
 		float t = (M_PI * freq * 2 * i) / (sample_rate);
-		correlator->Taps[i] = 4 * sin(t) / tap_count;
+		correlator->Taps[i] = 4 * cos(t) / tap_count;
 	}
 }
 
@@ -391,7 +394,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	// Apply AGC, normalize to 1.0
 	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, sample);
 	if (envelope > 0) {
-		sample = sample / (envelope);
+		//sample = sample / (envelope);
 	}
 	// Place sample in circular buffer.
 	PutCB(&demod->Buffer1, sample);
@@ -473,9 +476,9 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}
 	
 	// Initialize the envelope detector
-	InitEnvelopeDetector(&demod->EnvelopeDetector, 50, 50, sample_rate / symbol_rate);
+	InitEnvelopeDetector(&demod->EnvelopeDetector, 500, 1, 1);
 
-	InitCMAEqualizer(&demod->EQ, 1 * sample_rate / symbol_rate, mu);
+	InitCMAEqualizer(&demod->EQ, 0.5 * sample_rate / symbol_rate, mu);
 	LogNewline(logfile);
 	LogString(logfile, "CMA Equalizer tap count: ");
 	LogInt(logfile, demod->EQ.Filter.TapCount);
@@ -487,8 +490,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}
 	
 	// Generate mark correlator taps spanning 1 symbol.
-	int correlator_tap_count = sample_rate / symbol_rate;
-	InitToneCorrelator(&demod->Mark, tone1, sample_rate, correlator_tap_count);
+	InitToneCorrelator(&demod->Mark, tone1, sample_rate, symbol_rate);
 	LogNewline(logfile);
 	LogString(logfile, "Mark Correlator Tap Count: ");
 	LogInt(logfile, demod->Mark.TapCount);
@@ -500,7 +502,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}	
 
 	// Generate space correlator taps spanning 1 symbol.
-	InitToneCorrelator(&demod->Space, tone2, sample_rate, correlator_tap_count);
+	InitToneCorrelator(&demod->Space, tone2, sample_rate, symbol_rate);
 	LogNewline(logfile);
 	LogString(logfile, "Space Correlator Tap Count: ");
 	LogInt(logfile, demod->Space.TapCount);

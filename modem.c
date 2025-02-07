@@ -67,7 +67,7 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1000, \
-		/* equalizer gain mu */ /*0.002*/ 0.00 \
+		/* equalizer gain mu */ /*0.002*/ 0.5 \
 	);
 
 	Data_Slicer_struct Slicer;
@@ -104,7 +104,7 @@ int main(int arg_count, char* arg_values[]) {
 
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
-			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, buffer[i], Slicer.MatchDCD);
+			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
 			data = Slice2(&Slicer, buffer[i]);
 			if (data > 0) {
 				// Apply differential decoder
@@ -132,7 +132,7 @@ int main(int arg_count, char* arg_values[]) {
 		fwrite(&buffer3, 2, interleave_count, output_file);
 		count = fread(&buffer, 2, READ_SIZE, wav_file);
 	}
-	printf("Total Count: %d", AX25_Receiver.PacketCount);
+	printf("Total Count: %d\n", AX25_Receiver.PacketCount);
 	
 	fclose(output_file);
 	fclose(wav_file);
