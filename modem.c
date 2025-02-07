@@ -67,7 +67,7 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1000, \
-		/* equalizer gain mu */ /*0.002*/ 0.5  \
+		/* equalizer gain mu */ 0.3  \
 	);
 
 	Data_Slicer_struct Slicer;
@@ -75,9 +75,8 @@ int main(int arg_count, char* arg_values[]) {
 		&Slicer, \
 		file_header.SampleRate, \
 		/* symbol rate */ 1200, \
-		/* feedback parameter */ 0.75 \
+		/* feedback parameter */ 0.95 \
 	);
-	
 	
 	LFSR_struct LFSR;
 	InitLFSR(3, 0, &LFSR);
@@ -85,7 +84,6 @@ int main(int arg_count, char* arg_values[]) {
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
 	
-
 	FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
 	file_header.ChannelCount = 2;

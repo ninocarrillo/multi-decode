@@ -437,7 +437,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	LogString(logfile, "Initializing AFSK Demodulator.");
 
 	// Create the input Bandpass filter spanning 5 milliseconds of input samples.
-	int input_tap_count = 0.005 * sample_rate;
+	int input_tap_count = 0.007 * sample_rate;
 	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
 	LogNewline(logfile);
 	LogString(logfile, "Input filter tap count: ");
@@ -450,7 +450,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}
 
 	// Create a Hilbert transform filter spanning 3.4 milliseconds of input samples.
-	int hilbert_tap_count = 0.0034 * sample_rate;
+	int hilbert_tap_count = 0.003 * sample_rate;
 	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
 	LogNewline(logfile);
 	LogString(logfile, "Hilbert tap count: ");
@@ -509,8 +509,8 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	// Create the output Lowpass filter spanning 4 symbols.
-	int output_tap_count = 4 * sample_rate / symbol_rate;
+	// Create the output Lowpass filter spanning 5 symbols.
+	int output_tap_count = 5 * sample_rate / symbol_rate;
 	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
 	LogNewline(logfile);
 	LogString(logfile, "Output filter tap count: ");
