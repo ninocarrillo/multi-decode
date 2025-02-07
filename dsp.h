@@ -78,7 +78,7 @@ void GenLowPassFIR(FIR_struct *, float, float, int);
 void GenHighPassFIR(FIR_struct *, float, float, int);
 void GenBandFIR(FIR_struct *, float, float, float, int);
 int InterleaveInt16(int16_t *, int16_t *, int16_t *, int);
-void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float, float);
+void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float, int, float);
 float DemodAFSK(FILE *, AFSKDemod_struct *, float, int);
 float complex CMAEqFeedback(CMA_Equalizer_struct *, float complex);
 float complex CMAEq(CMA_Equalizer_struct *, float complex);

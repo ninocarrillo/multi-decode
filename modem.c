@@ -27,11 +27,17 @@ int main(int arg_count, char* arg_values[]) {
 		LogString(logfile, arg_values[i]);
 	}
 	
-	if (arg_count < 2) {
-		printf("Not enough arguments.\nUsage: modem <wavfile_name>\n");
+	if (arg_count < 4) {
+		printf("Not enough arguments.\nUsage: modem <wavfile_name> <CMA span> <CMA gain>\n");
 		LogString(logfile, "Not enough arguments, exiting.\n");
 		return -1;
 	}
+	
+	printf("\n");
+	for(int i = 0; i < arg_count; i++) {
+		printf("%s ", arg_values[i]);
+	}
+	printf("\n");
 
 	WAVHeader_struct file_header;
 	FILE *wav_file = fopen(arg_values[1], "rb");
@@ -56,8 +62,10 @@ int main(int arg_count, char* arg_values[]) {
 	int16_t buffer2[READ_SIZE];
 	int16_t buffer3[READ_SIZE * 2];
 	
+	int cma_span = atoi(arg_values[2]);
+	float cma_mu = atof(arg_values[3]);
+	
 	AFSKDemod_struct AFSKDemodulator;
-	float mu = 2.5;
 	InitAFSK( \
 		logfile, \
 		&AFSKDemodulator, \
@@ -68,7 +76,8 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1000, \
-		/* equalizer gain mu */ mu \
+		/* equalizer span */ cma_span, \
+		/* equalizer gain mu */ cma_mu \
 	);
 
 	Data_Slicer_struct Slicer;
@@ -76,7 +85,7 @@ int main(int arg_count, char* arg_values[]) {
 		&Slicer, \
 		file_header.SampleRate, \
 		/* symbol rate */ 1200, \
-		/* feedback parameter */ 0.95 \
+		/* feedback parameter */ 0.75 \
 	);
 	
 	LFSR_struct LFSR;
@@ -84,6 +93,8 @@ int main(int arg_count, char* arg_values[]) {
 
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
+	
+
 	
 
 
@@ -151,6 +162,10 @@ int main(int arg_count, char* arg_values[]) {
 	fclose(output_file);
 	fclose(wav_file);
 	fclose(logfile);
+	
+	FILE *output_data_file = fopen("./output.csv", "a");
+	fprintf(output_data_file, "%s, %i, %f, %i\n", arg_values[1], cma_span, cma_mu, AX25_Receiver.PacketCount);
+	fclose(output_data_file);
 
 	return 0;
 }
