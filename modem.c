@@ -84,12 +84,15 @@ int main(int arg_count, char* arg_values[]) {
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
 	
+
+
 	FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
 	file_header.ChannelCount = 2;
 	file_header.BlockSize = 16;
 	file_header.BytesPerBlock = 2 * 16 / 8;
 	file_header.BytesPerSec = file_header.SampleRate * 2 * 16 / 8;
+	file_header.DataSize = (file_header.DataSize + AFSKDemodulator.SampleDelay) * 2;
 	fwrite(&file_header, 1, 44, output_file);
 	
 	fseek(wav_file, 44, SEEK_SET);
@@ -99,6 +102,8 @@ int main(int arg_count, char* arg_values[]) {
 	long int data;
 	LogNewline(logfile);
 	LogString(logfile, "Sliced Data: ");
+
+	int flushed = 0;
 
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
@@ -128,7 +133,15 @@ int main(int arg_count, char* arg_values[]) {
 		// Interleave the data for Stereo wav file.
 		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);
 		fwrite(&buffer3, 2, interleave_count, output_file);
-		count = fread(&buffer, 2, READ_SIZE, wav_file);
+		count = fread(&buffer, 2, AFSKDemodulator.SampleDelay, wav_file);
+		if ((count < 1) && (flushed == 0)) {
+			flushed = 1;
+			count = READ_SIZE;
+			for (int i = 0; i < count; i++) {
+				buffer[i] = 0;
+			}
+
+		}
 	}
 	printf("Total Count: %d\n", AX25_Receiver.PacketCount);
 	
