@@ -57,6 +57,7 @@ int main(int arg_count, char* arg_values[]) {
 	int16_t buffer3[READ_SIZE * 2];
 	
 	AFSKDemod_struct AFSKDemodulator;
+	float mu = 2.5;
 	InitAFSK( \
 		logfile, \
 		&AFSKDemodulator, \
@@ -67,7 +68,7 @@ int main(int arg_count, char* arg_values[]) {
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1000, \
-		/* equalizer gain mu */ 0.3  \
+		/* equalizer gain mu */ mu \
 	);
 
 	Data_Slicer_struct Slicer;
@@ -120,6 +121,8 @@ int main(int arg_count, char* arg_values[]) {
 					for (int i = 0; i < AFSKDemodulator.EQ.Filter.TapCount; i++) {
 						LogComplex(logfile, AFSKDemodulator.EQ.Filter.Taps[i]);
 					}
+					//ResetCMATaps(&AFSKDemodulator.EQ);
+					//Slicer.MatchDCD = 0;
 				}
 			}
 			buffer2[i] = 1024 *  creal(AFSKDemodulator.Buffer3.Buffer[AFSKDemodulator.Buffer3.Index]);

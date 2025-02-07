@@ -59,6 +59,13 @@ float EnvelopeDetect(EnvelopeDetector_struct *detector, float signal_value) {
     return detector->Envelope;
 }
 
+void ResetCMATaps(CMA_Equalizer_struct *eq) {
+	for (int i = 0; i < eq->Filter.TapCount; i++) {
+		eq->Filter.Taps[i] = 0;
+	}
+	eq->Filter.Taps[eq->Filter.TapCount / 2] = 1;
+}
+
 void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float complex mu) {
 	if (tap_count % 2) {
 		// tap_count is odd, this is good.
@@ -75,7 +82,7 @@ void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float complex mu)
 	eq->Filter.TapCount = tap_count;
 	eq->Buffer.Length = tap_count;
 	eq->Buffer.Index = 0;
-	eq->mu = mu;
+	eq->mu = mu / pow(tap_count, 2);
 }
 
 float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
@@ -449,7 +456,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	// Create a Hilbert transform filter spanning 3.4 milliseconds of input samples.
+	// Create a Hilbert transform filter spanning 3 milliseconds of input samples.
 	int hilbert_tap_count = 0.003 * sample_rate;
 	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
 	LogNewline(logfile);
@@ -474,7 +481,8 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	// Initialize the envelope detector
 	InitEnvelopeDetector(&demod->EnvelopeDetector, 500, 1, 1);
 
-	InitCMAEqualizer(&demod->EQ, 0.5 * sample_rate / symbol_rate, mu);
+	InitCMAEqualizer(&demod->EQ, 3, mu);
+	//InitCMAEqualizer(&demod->EQ, 9, mu);
 	LogNewline(logfile);
 	LogString(logfile, "CMA Equalizer tap count: ");
 	LogInt(logfile, demod->EQ.Filter.TapCount);

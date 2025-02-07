@@ -85,3 +85,4 @@ float complex CMAEq(CMA_Equalizer_struct *, float complex);
 void InitCMAEqualizer(CMA_Equalizer_struct *, int, float complex);
 float EnvelopeDetect(EnvelopeDetector_struct *, float);
 void InitEnvelopeDetector(EnvelopeDetector_struct *, float, float, float);
+void ResetCMATaps(CMA_Equalizer_struct *);
