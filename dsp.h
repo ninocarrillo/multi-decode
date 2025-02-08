@@ -7,6 +7,8 @@ typedef struct {
 	float Taps[MAX_FIR_TAP_COUNT];
 	float Gain;
 	float SampleRate;
+	float PreAuto;
+	float Auto;
 	int TapCount;
 } FIR_struct;
 

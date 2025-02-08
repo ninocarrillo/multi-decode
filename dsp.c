@@ -395,6 +395,19 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, f
 		float t = (M_PI * freq * 2 * i) / (sample_rate);
 		correlator->Taps[i] = 4 * cos(t) / tap_count;
 	}
+	// Normalize autocorrelation
+	// First, calculate the autocorrelation
+	correlator->PreAuto = 0;
+	for (int i = 0; i < tap_count; i++) {
+		correlator->PreAuto += pow(correlator->Taps[i],2);
+	}
+	for (int i = 0; i < tap_count; i++) {
+		correlator->Taps[i] /= sqrt(correlator->PreAuto);
+	}
+	correlator->Auto = 0;
+	for (int i = 0; i < tap_count; i++) {
+		correlator->Auto += pow(correlator->Taps[i],2);
+	}
 }
 
 float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
@@ -496,6 +509,12 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	LogString(logfile, "Mark Correlator Tap Count: ");
 	LogInt(logfile, demod->Mark.TapCount);
 	LogNewline(logfile);
+	LogString(logfile, "Uncorrected Autocorrelation: ");
+	LogFloat(logfile, demod->Mark.PreAuto);
+	LogNewline(logfile);
+	LogString(logfile, "Corrected Autocorrelation: ");
+	LogFloat(logfile, demod->Mark.Auto);
+	LogNewline(logfile);
 	LogString(logfile, "Taps: ");
 	for (int i = 0; i < demod->Mark.TapCount; i++) {
 		LogFloat(logfile, demod->Mark.Taps[i]);
@@ -506,6 +525,13 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	InitToneCorrelator(&demod->Space, tone2, sample_rate, symbol_rate);
 	LogNewline(logfile);
 	LogString(logfile, "Space Correlator Tap Count: ");
+	LogNewline(logfile);
+	LogString(logfile, "Uncorrected Autocorrelation: ");
+	LogFloat(logfile, demod->Space.PreAuto);
+	LogNewline(logfile);
+	LogString(logfile, "Corrected Autocorrelation: ");
+	LogFloat(logfile, demod->Space.Auto);
+	LogNewline(logfile);
 	LogInt(logfile, demod->Space.TapCount);
 	LogNewline(logfile);
 	LogString(logfile, "Taps: ");
