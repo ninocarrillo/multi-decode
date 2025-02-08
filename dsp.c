@@ -145,7 +145,6 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 	// Apply a Hann window to the filters.
 	for (i = 0; i < tap_count; i++) {
 		float window = pow(sin(M_PI * i / N), 2);
-		window = 1;
 		hilbert_filter->Taps[i] *= window;
 		delay_filter->Taps[i] *= window;
 	}
@@ -387,14 +386,22 @@ float CorrelateComplexCB(ComplexCircularBuffer_struct *buffer, FIR_struct *filte
 }
 
 void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, float symbol_rate) {
-	int tap_count = sample_rate / symbol_rate;
+	int tap_count = 1.5 * sample_rate / symbol_rate;
 	correlator->SampleRate = sample_rate;
 	correlator->Gain = 1;
 	correlator->TapCount = tap_count;
 	for (int i = 0; i < tap_count; i++) {
 		float t = (M_PI * freq * 2 * i) / (sample_rate);
-		correlator->Taps[i] = 4 * cos(t) / tap_count;
+		correlator->Taps[i] = cos(t);
 	}
+	
+	int N = tap_count - 1;
+	// Apply a Hann window to the filter.
+	for (int i = 0; i < tap_count; i++) {
+		float window = pow(sin(M_PI * i / N), 2);
+		correlator->Taps[i] *= window;
+	}
+	
 	// Normalize autocorrelation
 	// First, calculate the autocorrelation
 	correlator->PreAuto = 0;
