@@ -3,7 +3,7 @@
 #include "ted.h"
 
 void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate, float lock_rate) {
-    slicer->DCDLoad = 120;
+    slicer->DCDLoad = 32;
     slicer->ClockStep = symbol_rate / sample_rate;
     slicer->Clock = 0;
     slicer->LockRate = lock_rate;
