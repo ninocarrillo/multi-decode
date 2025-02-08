@@ -27,8 +27,8 @@ int main(int arg_count, char* arg_values[]) {
 		LogString(logfile, arg_values[i]);
 	}
 	
-	if (arg_count < 4) {
-		printf("Not enough arguments.\nUsage: modem <wavfile_name> <CMA span> <CMA gain>\n");
+	if (arg_count < 5) {
+		printf("Not enough arguments.\nUsage: modem <wavfile_name> <CMA span> <CMA gain> <result file>\n");
 		LogString(logfile, "Not enough arguments, exiting.\n");
 		return -1;
 	}
@@ -163,7 +163,7 @@ int main(int arg_count, char* arg_values[]) {
 	fclose(wav_file);
 	fclose(logfile);
 	
-	FILE *output_data_file = fopen("./output.csv", "a");
+	FILE *output_data_file = fopen(arg_values[4], "a");
 	fprintf(output_data_file, "%s, %i, %f, %i\n", arg_values[1], cma_span, cma_mu, AX25_Receiver.PacketCount);
 	fclose(output_data_file);
 
