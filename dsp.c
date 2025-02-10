@@ -87,14 +87,15 @@ void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float complex mu)
 
 float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
 	PutComplexCB(&eq->Buffer, sample);
-	return FilterComplexCB(&eq->Buffer, &eq->Filter);
+	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
+	return eq->accumulator;
 }
 
 float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
 	PutComplexCB(&eq->Buffer, sample);
-	float complex accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
-	float complex error = cabs(accumulator) - 1;
-	float complex adjust = accumulator * error * eq->mu;
+	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
+	float complex error = cabs(eq->accumulator) - 1;
+	float complex adjust = eq->accumulator * error * eq->mu;
 	int i, j;
 	j = eq->Buffer.Index + 1;
 	for (i = 0; i < eq->Filter.TapCount; i++) {
@@ -108,7 +109,24 @@ float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
 		}
 	}
 
-	return accumulator;
+	return eq->accumulator;
+}
+
+void CMAFeedback(CMA_Equalizer_struct *eq) {
+	float complex error = cabs(eq->accumulator) - 1;
+	float complex adjust = eq->accumulator * error * eq->mu;
+	int i, j;
+	j = eq->Buffer.Index + 1;
+	for (i = 0; i < eq->Filter.TapCount; i++) {
+		eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
+		j++;
+		if (j < 0) {
+			j += eq->Buffer.Length;
+		}
+		if (j >= eq->Buffer.Length) {
+			j = 0;
+		}
+	}
 }
 
 int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_count) {

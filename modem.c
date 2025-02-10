@@ -93,10 +93,6 @@ int main(int arg_count, char* arg_values[]) {
 
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
-	
-
-	
-
 
 	//FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
@@ -119,8 +115,8 @@ int main(int arg_count, char* arg_values[]) {
 
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
-			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
-			data = Slice2(&Slicer, buffer[i]);
+			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, 0);
+			data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
 			if (data > 0) {
 				// Apply differential decoder
 				data = Unscramble(&LFSR, data, Slicer.AccumulatorBitWidth, Slicer.AccumulatorBitWidth);

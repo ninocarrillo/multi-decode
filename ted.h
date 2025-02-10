@@ -1,4 +1,8 @@
+#ifndef ted_h
+#define ted_h
+
 #include <stdint.h>
+#include "dsp.h"
 
 typedef struct {
     float Clock;
@@ -15,3 +19,5 @@ typedef struct {
 
 void InitSlice2(Data_Slicer_struct *, float, float, float);
 long int Slice2(Data_Slicer_struct *, float);
+long int Slice2Eq(Data_Slicer_struct *, CMA_Equalizer_struct *, float);
+#endif

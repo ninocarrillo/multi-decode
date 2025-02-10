@@ -1,3 +1,6 @@
+#ifndef dsp_h
+#define dsp_h
+
 #define MAX_FIR_TAP_COUNT 1000
 #include <stdint.h>
 #include <complex.h>
@@ -36,6 +39,7 @@ typedef struct {
 	ComplexFIR_struct Filter;
 	ComplexCircularBuffer_struct Buffer;
 	complex float mu;
+	complex float accumulator;
 } CMA_Equalizer_struct;
 
 typedef struct {
@@ -88,3 +92,6 @@ void InitCMAEqualizer(CMA_Equalizer_struct *, int, float complex);
 float EnvelopeDetect(EnvelopeDetector_struct *, float);
 void InitEnvelopeDetector(EnvelopeDetector_struct *, float, float, float);
 void ResetCMATaps(CMA_Equalizer_struct *);
+void CMAFeedback(CMA_Equalizer_struct *);
+
+#endif
