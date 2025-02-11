@@ -370,6 +370,11 @@ void GenBandFIR(FIR_struct *filter, float freq1, float freq2, float sample_rate,
 	GenLowPassFIR(filter, freq2, sample_rate, tap_count / 2);
 	GenHighPassFIR(&hpf, freq1, sample_rate, tap_count / 2);
 	CombineFIR(filter, &hpf);
+	// Add a de-emphasis filter
+	//GenLowPassFIR(&hpf, 2122, sample_rate, 5);
+	//CombineFIR(filter, &hpf);
+	//GenLowPassFIR(&hpf, 2122, sample_rate, 5);
+	//CombineFIR(filter, &hpf);
 }
 
 int InterleaveInt16(int16_t *output, int16_t *left_data, int16_t *right_data, int count) {
