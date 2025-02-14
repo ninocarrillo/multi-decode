@@ -71,11 +71,11 @@ int main(int arg_count, char* arg_values[]) {
 		&AFSKDemodulator, \
 		file_header.SampleRate, \
 		/* low cut freq */ 1000, \
-		/* high cut freq */ 2800, \
+		/* high cut freq */ 2400, \
 		/* tone 1 freq */ 1200, \
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
-		/* output filter cutoff freq */ 1100, \
+		/* output filter cutoff freq */ 1200, \
 		/* equalizer span */ cma_span, \
 		/* equalizer gain mu */ cma_mu \
 	);
@@ -115,8 +115,9 @@ int main(int arg_count, char* arg_values[]) {
 
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
-			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, 0);
-			data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
+			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
+			data = Slice2(&Slicer, buffer[i]);
 			if (data > 0) {
 				// Apply differential decoder
 				data = Unscramble(&LFSR, data, Slicer.AccumulatorBitWidth, Slicer.AccumulatorBitWidth);

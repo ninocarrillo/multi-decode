@@ -40,6 +40,7 @@ typedef struct {
 	ComplexCircularBuffer_struct Buffer;
 	complex float mu;
 	complex float accumulator;
+	int PeriodCounter;
 } CMA_Equalizer_struct;
 
 typedef struct {
@@ -86,7 +87,7 @@ void GenBandFIR(FIR_struct *, float, float, float, int);
 int InterleaveInt16(int16_t *, int16_t *, int16_t *, int);
 void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float, int, float);
 float DemodAFSK(FILE *, AFSKDemod_struct *, float, int);
-float complex CMAEqFeedback(CMA_Equalizer_struct *, float complex);
+float complex CMAEqFeedback(CMA_Equalizer_struct *, float complex, int);
 float complex CMAEq(CMA_Equalizer_struct *, float complex);
 void InitCMAEqualizer(CMA_Equalizer_struct *, int, float complex);
 float EnvelopeDetect(EnvelopeDetector_struct *, float);

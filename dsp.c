@@ -91,24 +91,27 @@ float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
 	return eq->accumulator;
 }
 
-float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample) {
+float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample, int feedback_period) {
 	PutComplexCB(&eq->Buffer, sample);
 	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
-	float complex error = cabs(eq->accumulator) - 1;
-	float complex adjust = eq->accumulator * error * eq->mu;
-	int i, j;
-	j = eq->Buffer.Index + 1;
-	for (i = 0; i < eq->Filter.TapCount; i++) {
-		eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
-		j++;
-		if (j < 0) {
-			j += eq->Buffer.Length;
-		}
-		if (j >= eq->Buffer.Length) {
-			j = 0;
+	eq->PeriodCounter++;
+	if (eq->PeriodCounter >= feedback_period) {
+		eq->PeriodCounter = 0;
+		float complex error = cabs(eq->accumulator) - 1;
+		float complex adjust = eq->accumulator * error * eq->mu;
+		int i, j;
+		j = eq->Buffer.Index + 1;
+		for (i = 0; i < eq->Filter.TapCount; i++) {
+			eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
+			j++;
+			if (j < 0) {
+				j += eq->Buffer.Length;
+			}
+			if (j >= eq->Buffer.Length) {
+				j = 0;
+			}
 		}
 	}
-
 	return eq->accumulator;
 }
 
@@ -456,7 +459,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		result = CMAEqFeedback(&demod->EQ, result);
+		result = CMAEqFeedback(&demod->EQ, result, 3);
 	} else {
 		result = CMAEq(&demod->EQ, result);
 	}

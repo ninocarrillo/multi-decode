@@ -50,10 +50,8 @@ long int Slice2Eq(Data_Slicer_struct *slicer, CMA_Equalizer_struct *eq, float sa
         slicer->MatchDCD--;
         if (slicer->MatchDCD < 0) {
             slicer->MatchDCD = -1;
-        } else {
-            // Apply equalizer feedback
-            CMAFeedback(eq);
-        }
+        } 
+
         if ((slicer->DataAccumulator & 0xFFFFFF) == 0x808080) {
             slicer->MatchDCD = slicer->DCDLoad;
         }
@@ -62,6 +60,11 @@ long int Slice2Eq(Data_Slicer_struct *slicer, CMA_Equalizer_struct *eq, float sa
         }
         if ((slicer->DataAccumulator & 0xFFFFFF) == 0x555555) {
             slicer->MatchDCD = slicer->DCDLoad;
+        }
+
+        if (slicer->MatchDCD > 0) {
+            // Apply equalizer feedback
+            CMAFeedback(eq);
         }
     }
     if (ZDetect(slicer->LastSample, sample)) {
