@@ -71,11 +71,11 @@ int main(int arg_count, char* arg_values[]) {
 		&AFSKDemodulator, \
 		file_header.SampleRate, \
 		/* low cut freq */ 1000, \
-		/* high cut freq */ 2400, \
+		/* high cut freq */ 2600, \
 		/* tone 1 freq */ 1200, \
 		/* tone 2 freq */ 2200, \
 		/* symbol rate */ 1200, \
-		/* output filter cutoff freq */ 1200, \
+		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ cma_span, \
 		/* equalizer gain mu */ cma_mu \
 	);
