@@ -91,6 +91,50 @@ float complex CMAEq(CMA_Equalizer_struct *eq, float complex sample) {
 	return eq->accumulator;
 }
 
+float NormComplex(ComplexCircularBuffer_struct *buffer) {
+	float result = 0;
+	for (int i = 0; i < buffer->Length; i++) {
+		result += creal(cpow(buffer->Buffer[i], 2));
+	}
+	return sqrt(result);
+}
+
+float complex CMAEqFeedbackNorm(CMA_Equalizer_struct *eq, float complex sample, int feedback_period) {
+
+	PutComplexCB(&eq->Buffer, sample);
+	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
+	eq->PeriodCounter++;
+	
+	/* Calculate mu using the normalized CMA approach by Jones */
+	float abs_y = cabs(eq->accumulator);
+	float abs_y2 = abs_y * abs_y;
+	float norm_X2 = NormComplex(&eq->Buffer);
+	norm_X2 *= norm_X2;
+	eq->mu = (abs_y2 - abs_y) / (4*abs_y2*(abs_y2 - 1)*norm_X2);
+	eq->mu *= 0.3;
+	/***********************************************************/
+	
+	if (eq->PeriodCounter >= feedback_period) {
+		eq->PeriodCounter = 0;
+		float complex error = cabs(eq->accumulator) - 1;
+		float complex adjust = eq->accumulator * error * eq->mu;
+		int i, j;
+		j = eq->Buffer.Index + 1;
+		for (i = 0; i < eq->Filter.TapCount; i++) {
+			eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
+			j++;
+			if (j < 0) {
+				j += eq->Buffer.Length;
+			}
+			if (j >= eq->Buffer.Length) {
+				j = 0;
+			}
+		}
+	}
+	return eq->accumulator;
+}
+
+
 float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample, int feedback_period) {
 	PutComplexCB(&eq->Buffer, sample);
 	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
@@ -464,7 +508,8 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		result = CMAEqFeedback(&demod->EQ, result, 1);
+		//result = CMAEqFeedback(&demod->EQ, result, 1);
+		result = CMAEqFeedbackNorm(&demod->EQ, result, 1);
 	} else {
 		result = CMAEq(&demod->EQ, result);
 	}
