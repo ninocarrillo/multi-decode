@@ -188,6 +188,11 @@ int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_co
 	}
 	hilbert_filter->Gain = delay_filter->Gain; 	
 
+	// for (i = 0; i < tap_count; i++) {
+	// 	delay_filter->Taps[i] = 0;
+	// }
+	// delay_filter->Taps[delay] = 1;
+
 	delay++;
 	return delay;
 }
