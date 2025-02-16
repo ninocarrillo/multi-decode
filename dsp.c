@@ -459,7 +459,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		result = CMAEqFeedback(&demod->EQ, result, 3);
+		result = CMAEqFeedback(&demod->EQ, result, 1);
 	} else {
 		result = CMAEq(&demod->EQ, result);
 	}
