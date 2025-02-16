@@ -129,6 +129,8 @@ int main(int arg_count, char* arg_values[]) {
 					for (int i = 0; i < AFSKDemodulator.EQ.Filter.TapCount; i++) {
 						LogComplex(logfile, AFSKDemodulator.EQ.Filter.Taps[i]);
 					}
+					LogNewline(logfile);
+					LogFloat(logfile, AFSKDemodulator.EQ.mu);
 					//ResetCMATaps(&AFSKDemodulator.EQ);
 					//Slicer.MatchDCD = 0;
 				}
