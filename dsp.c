@@ -463,7 +463,8 @@ float CorrelateComplexCB(ComplexCircularBuffer_struct *buffer, FIR_struct *filte
 }
 
 void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, float symbol_rate) {
-	int tap_count = 1.5 * sample_rate / symbol_rate;
+	//int tap_count = 1.5 * sample_rate / symbol_rate;
+	int tap_count = 1.0 * sample_rate / symbol_rate;
 	correlator->SampleRate = sample_rate;
 	correlator->Gain = 1;
 	correlator->TapCount = tap_count;
@@ -472,12 +473,12 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, f
 		correlator->Taps[i] = cos(t);
 	}
 	
-	int N = tap_count - 1;
+	//int N = tap_count - 1;
 	// Apply a Hann window to the filter.
-	for (int i = 0; i < tap_count; i++) {
-		float window = pow(sin(M_PI * i / N), 2);
-		correlator->Taps[i] *= window;
-	}
+	//for (int i = 0; i < tap_count; i++) {
+	//	float window = pow(sin(M_PI * i / N), 2);
+	//	correlator->Taps[i] *= window;
+	//}
 	
 	// Normalize autocorrelation
 	// First, calculate the autocorrelation
@@ -525,13 +526,15 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	// Apply the space correlator.
 	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
 
+	//result = (mark*mark) - (space*space);
 	result = mark - space;
 
 	// Place result in buffer.
 	PutCB(&demod->Buffer4, creal(1024 * result));
 
 	// Apply output filter.
-	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+	//result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+	result = 1024 * result;
 
 	return creal(result);
 }
