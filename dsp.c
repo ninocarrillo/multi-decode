@@ -526,8 +526,8 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	// Apply the space correlator.
 	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
 
-	//result = (mark*mark) - (space*space);
-	result = mark - space;
+	result = (mark*mark) - (space*space);
+	//result = mark - space;
 
 	// Place result in buffer.
 	PutCB(&demod->Buffer4, creal(1024 * result));
