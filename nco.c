@@ -21,7 +21,8 @@ float GetNCOSampleFromFCW(NCO_struct *this, int fcw) {
     this->PAcc += fcw;
     this->PAcc &= this->PAccMask;
     unsigned int dithered_acc = this->PAcc + ((unsigned int)GetPRN(&this->Dither) & this->DitherMask);
-    return this->Wavetable[(dithered_acc & this->PAccMask) >> this->TableShift];
+    this->SineOutput = this->Wavetable[(dithered_acc & this->PAccMask) >> this->TableShift];
+    return this->SineOutput;
 }
 
 float GetNCOSampleFromFreq(NCO_struct *this, float freq) {
@@ -29,5 +30,6 @@ float GetNCOSampleFromFreq(NCO_struct *this, float freq) {
 	this->PAcc += fcw;
 	this->PAcc &= this->PAccMask;
     unsigned int dithered_acc = this->PAcc + ((unsigned int)GetPRN(&this->Dither) & this->DitherMask);
-    return this->Wavetable[(dithered_acc & this->PAccMask) >> this->TableShift];
+    this->SineOutput = this->Wavetable[(dithered_acc & this->PAccMask) >> this->TableShift];
+    return this->SineOutput;
 }

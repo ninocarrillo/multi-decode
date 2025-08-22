@@ -18,4 +18,7 @@ typedef struct {
 } PLL_struct;
 
 
+void InitPLL(PLL_struct *, float , float , float , float , float , float );
+float UpdatePLL(PLL_struct *, float );
+
 #endif

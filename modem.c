@@ -12,6 +12,7 @@
 #include "ax25.h"
 #include "lfsr.h"
 #include "nco.h"
+#include "pll.h"
 
 int main(int arg_count, char* arg_values[]) {
 	FILE *logfile;
@@ -126,6 +127,10 @@ int main(int arg_count, char* arg_values[]) {
 
 		}
 	}
+
+	PLL_struct PLL;
+	InitPLL(&PLL, file_header.SampleRate, 1050, 500, 0.01, 0.0001, 100);
+	
 
 	int flushed = 0;
 

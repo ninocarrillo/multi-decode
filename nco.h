@@ -16,6 +16,7 @@ typedef struct {
     int WavetableSize;
     int PAccSize;
     int TableShift;
+    float SineOutput;
 } NCO_struct;
 
 float GetNCOSampleFromFCW(NCO_struct *, int);
