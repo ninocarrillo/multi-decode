@@ -33,6 +33,14 @@ long int Unscramble(LFSR_struct *LFSR, long int data, int in_bit_count, int targ
 	return data;
 }
 
+unsigned long int GetPRN(LFSR_struct *LFSR) {
+    if (LFSR->ShiftRegister & LFSR->FeedbackMask) {
+        LFSR->ShiftRegister ^= LFSR->Polynomial;
+    }
+    LFSR->ShiftRegister >>= 1;
+    return LFSR->ShiftRegister;
+}
+
 void InitLFSR(long int Polynomial, int invert, LFSR_struct *LFSR) {
     LFSR->Polynomial = Polynomial;
     LFSR->TapCount = 0;

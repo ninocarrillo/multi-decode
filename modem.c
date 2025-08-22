@@ -113,7 +113,7 @@ int main(int arg_count, char* arg_values[]) {
 	LogString(logfile, "Sliced Data: ");
 
 	NCO_struct NCO;
-	InitNCO(&NCO, 8, 16, file_header.SampleRate);
+	InitNCO(&NCO, 8, 16, 11, file_header.SampleRate);
 	LogNewline(logfile);
 	LogString(logfile, "NCO data:");
 	LogNewline(logfile);

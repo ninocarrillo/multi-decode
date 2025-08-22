@@ -1,3 +1,5 @@
+#ifndef lfsr_h
+#define lfsr_h
 #include <stdint.h>
 
 
@@ -21,5 +23,6 @@ typedef struct {
 } LFSR_struct;
 
 long int Unscramble(LFSR_struct *, long int, int, int);
-
 void InitLFSR(long int, int, LFSR_struct *);
+unsigned long int GetPRN(LFSR_struct *);
+#endif
