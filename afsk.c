@@ -2,6 +2,7 @@
 #include "afsk.h"
 #include "log.h"
 #include "dsp.h"
+#include "pll.h"
 
 
 void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, float symbol_rate) {
@@ -196,4 +197,129 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	demod->SampleDelay += demod->Mark.TapCount;
 	demod->SampleDelay += demod->OutputFilter.TapCount;
 
+}
+void InitAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float pll_set_freq, float pll_loop_cutoff, float pll_p_gain, float pll_i_gain, float pll_i_limit, float output_cut, int cma_span, float cma_mu) {
+	
+	LogNewline(logfile);
+	LogString(logfile, "Initializing AFSK PLL Demodulator.");
+	
+	InitEnvelopeDetector(&demod->EnvelopeDetector, sample_rate, /*attack*/ 500, /*sustain*/ 0, /*decay*/2.5); 
+
+	// Create the input Bandpass filter spanning 7 milliseconds of input samples.
+	int input_tap_count = 0.007 * sample_rate;
+	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Input filter tap count: ");
+	LogInt(logfile, demod->InputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->InputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->InputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Create a Hilbert transform filter spanning 3 milliseconds of input samples.
+	int hilbert_tap_count = 0.003 * sample_rate;
+	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Hilbert tap count: ");
+	LogInt(logfile, demod->HilbertFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->HilbertFilter.TapCount; i++) {
+		LogFloat(logfile, demod->HilbertFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	LogNewline(logfile);
+	LogString(logfile, "Delay tap count: ");
+	LogInt(logfile, demod->DelayFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->DelayFilter.TapCount; i++) {
+		LogFloat(logfile, demod->DelayFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	InitCMAEqualizer(&demod->EQ, cma_span, cma_mu);
+	LogNewline(logfile);
+	LogString(logfile, "CMA Equalizer tap count: ");
+	LogInt(logfile, demod->EQ.Filter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->EQ.Filter.TapCount; i++) {
+		LogFloat(logfile, demod->EQ.Filter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	
+	// Generate PLL.
+	InitPLL(&demod->PLL, sample_rate, pll_set_freq, pll_loop_cutoff, pll_p_gain, pll_i_gain, pll_i_limit);
+	LogNewline(logfile);
+	LogString(logfile, "Generated PLL.");
+
+
+	// Create the output Lowpass filter spanning 3 milliseconds.
+	int output_tap_count = 0.003 * sample_rate;
+	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Output filter tap count: ");
+	LogInt(logfile, demod->OutputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->OutputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->OutputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Initialize buffers.
+	InitCB(&demod->Buffer1, demod->InputFilter.TapCount);
+	InitCB(&demod->Buffer2, demod->HilbertFilter.TapCount);
+	InitCB(&demod->Buffer4, demod->OutputFilter.TapCount);
+
+	// Calculate the sample delay.
+	demod->SampleDelay = 0;
+	demod->SampleDelay += demod->InputFilter.TapCount;
+	demod->SampleDelay += demod->HilbertFilter.TapCount;
+	demod->SampleDelay += demod->OutputFilter.TapCount;
+
+}
+
+float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int carrier_detect) {
+
+	// Apply AGC
+	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, sample);
+	if (envelope != 0) {
+		sample = sample / envelope;
+	}
+
+	// Place sample in circular buffer.
+	PutCB(&demod->Buffer1, sample);
+
+	// Apply input filter.
+	float complex result = FilterCB(&demod->Buffer1, &demod->InputFilter);
+
+	// Place filtered sample in circular buffer.
+	PutCB(&demod->Buffer2, creal(result));
+
+	// Create quadrature signal.
+	result = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
+	
+	// Equalize.
+	if (carrier_detect > 0) {
+		result = CMAEqFeedback(&demod->EQ, result, 2);
+		//result = CMAEqFeedbackNorm(&demod->EQ, result, 1);
+	} else {
+		result = CMAEq(&demod->EQ, result);
+	}
+
+	// Apply PLL to real part
+	result = UpdatePLL(&demod->PLL, result);
+
+	// Place result in buffer.
+	PutCB(&demod->Buffer4, creal(result));
+
+	// Apply output filter.
+	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+	
+
+	return creal(result);
 }

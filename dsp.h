@@ -52,7 +52,8 @@ typedef struct {
     float AttackRate;
     float DecayRate;
     float SustainPeriod;
-    int SustainCount;
+	float SustainIncrement;
+    float SustainCount;
 } EnvelopeDetector_struct;
 
 
@@ -72,7 +73,7 @@ float complex CMAEqFeedback(CMA_Equalizer_struct *, float complex, int);
 float complex CMAEq(CMA_Equalizer_struct *, float complex);
 void InitCMAEqualizer(CMA_Equalizer_struct *, int, float complex);
 float EnvelopeDetect(EnvelopeDetector_struct *, float);
-void InitEnvelopeDetector(EnvelopeDetector_struct *, float, float, float);
+void InitEnvelopeDetector(EnvelopeDetector_struct *, float, float, float, float);
 void ResetCMATaps(CMA_Equalizer_struct *);
 void CMAFeedback(CMA_Equalizer_struct *);
 void InitCB(CircularBuffer_struct *, int );

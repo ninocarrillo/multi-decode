@@ -69,7 +69,26 @@ int main(int arg_count, char* arg_values[]) {
 	
 	int cma_span = atoi(arg_values[2]);
 	float cma_mu = atof(arg_values[3]);
+	//float cma_mu = 0;
+	float pll_p_gain = atof(arg_values[3]);
 	int decoder_type = atoi(arg_values[4]);
+	
+	AFSKPLLDemod_struct AFSKPLLDemodulator;
+	InitAFSKPLL( \
+		logfile, \
+		&AFSKPLLDemodulator, \
+		file_header.SampleRate, \
+		/* low cut freq */ 900, \
+		/* high cut freq */ 2500, \
+		/* pll set freq */ 1700, \
+		/* pll loop cutoff */ 3000, \
+		/* pll_p_gain */ 11000, \
+		/* pll_i_gain */ 0, \
+		/* pll_i_limit */ 0, \
+		/* output filter cutoff freq */ 950, \
+		/* equalizer span */ cma_span, \
+		/* equalizer gain mu */ cma_mu \
+	);	
 	
 	AFSKDemod_struct AFSKDemodulator;
 	InitAFSK( \
@@ -142,7 +161,7 @@ int main(int arg_count, char* arg_values[]) {
 			if (decoder_type == 1) {
 				buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
 			} else if (decoder_type == 2) {
-				
+				buffer[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
 			}
 			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
 			data = Slice2(&Slicer, buffer[i]);
@@ -164,9 +183,9 @@ int main(int arg_count, char* arg_values[]) {
 				}
 			}
 			
-			float control = UpdatePLL(&PLL, input_sample/65536);
-			buffer2[i] = control;
-			buffer[i] = 16384 * PLL.NCO.SineOutput;
+			//float control = UpdatePLL(&PLL, input_sample/65536);
+			//buffer2[i] = control;
+			//buffer[i] = 16384 * PLL.NCO.SineOutput;
 		}
 
 		// Interleave the data for Stereo wav file.

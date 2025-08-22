@@ -6,10 +6,11 @@
 #include "dsp.h"
 #include "log.h"
 
-void InitEnvelopeDetector(EnvelopeDetector_struct *detector, float attack, float decay, float sustain) {
-	detector->AttackRate = attack;
-	detector->DecayRate = decay;
+void InitEnvelopeDetector(EnvelopeDetector_struct *detector, float sample_rate, float attack, float sustain, float decay) {
+	detector->AttackRate = attack / sample_rate;
+	detector->DecayRate = decay / sample_rate;
 	detector->SustainPeriod = sustain;
+	detector->SustainIncrement = 1 / sample_rate;
 	detector->SustainCount = 0;
 	detector->Zero = 0;
 	detector->Envelope = 0;
@@ -47,7 +48,8 @@ float EnvelopeDetect(EnvelopeDetector_struct *detector, float signal_value) {
     detector->LastValue = signal_value;
 	
     // Apply a Sustain/Decay process.
-    if (detector->SustainCount++ >= detector->SustainPeriod) {
+	detector->SustainCount += detector->SustainIncrement;
+    if (detector->SustainCount >= detector->SustainPeriod) {
         // Sustain interval has elapsed.
         // Decay the envelope.
         detector->PosPeak -= detector->DecayRate;
