@@ -11,6 +11,7 @@
 #include "ted.h"
 #include "ax25.h"
 #include "lfsr.h"
+#include "nco.h"
 
 int main(int arg_count, char* arg_values[]) {
 	FILE *logfile;
@@ -94,14 +95,14 @@ int main(int arg_count, char* arg_values[]) {
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
 
-	//FILE *output_file = fopen("./output.wav", "wb");
+	FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
 	file_header.ChannelCount = 2;
 	file_header.BlockSize = 16;
 	file_header.BytesPerBlock = 2 * 16 / 8;
 	file_header.BytesPerSec = file_header.SampleRate * 2 * 16 / 8;
 	file_header.DataSize = (file_header.DataSize + AFSKDemodulator.SampleDelay) * 2;
-	//fwrite(&file_header, 1, 44, output_file);
+	fwrite(&file_header, 1, 44, output_file);
 	
 	fseek(wav_file, 44, SEEK_SET);
 	count = fread(&buffer, 2, READ_SIZE, wav_file);
@@ -110,6 +111,21 @@ int main(int arg_count, char* arg_values[]) {
 	long int data;
 	LogNewline(logfile);
 	LogString(logfile, "Sliced Data: ");
+
+	NCO_struct NCO;
+	InitNCO(&NCO, 8, 16, file_header.SampleRate);
+	LogNewline(logfile);
+	LogString(logfile, "NCO data:");
+	LogNewline(logfile);
+	{
+		int i;
+		for (i = 0; i < 256; i++) {
+			LogInt(logfile, i);
+			LogFloat(logfile, NCO.Wavetable[i]);
+			LogString(logfile, ", ");
+
+		}
+	}
 
 	int flushed = 0;
 
@@ -141,11 +157,12 @@ int main(int arg_count, char* arg_values[]) {
 			//PutCB(&AFSKDemodulator.Buffer2, buffer[i]);
 			//buffer2[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.HilbertFilter);
 			//buffer[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.DelayFilter);
+			buffer[i] = 1024*GetNCOSampleFromFreq(&NCO, 1000);
 		}
 
 		// Interleave the data for Stereo wav file.
 		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);
-		//fwrite(&buffer3, 2, interleave_count, output_file);
+		fwrite(&buffer3, 2, interleave_count, output_file);
 		count = fread(&buffer, 2, AFSKDemodulator.SampleDelay, wav_file);
 		if ((count < 1) && (flushed == 0)) {
 			flushed = 1;
@@ -158,7 +175,7 @@ int main(int arg_count, char* arg_values[]) {
 	}
 	printf("Total Count: %d\n", AX25_Receiver.PacketCount);
 	
-	//fclose(output_file);
+	fclose(output_file);
 	fclose(wav_file);
 	fclose(logfile);
 	
