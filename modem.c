@@ -113,7 +113,7 @@ int main(int arg_count, char* arg_values[]) {
 	LogString(logfile, "Sliced Data: ");
 
 	NCO_struct NCO;
-	InitNCO(&NCO, 8, 16, 11, file_header.SampleRate);
+	InitNCO(&NCO, 16, 31, 7, file_header.SampleRate);
 	LogNewline(logfile);
 	LogString(logfile, "NCO data:");
 	LogNewline(logfile);
@@ -157,7 +157,7 @@ int main(int arg_count, char* arg_values[]) {
 			//PutCB(&AFSKDemodulator.Buffer2, buffer[i]);
 			//buffer2[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.HilbertFilter);
 			//buffer[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.DelayFilter);
-			buffer[i] = 1024*GetNCOSampleFromFreq(&NCO, 1000);
+			buffer[i] = 32767*GetNCOSampleFromFreq(&NCO, 1000);
 		}
 
 		// Interleave the data for Stereo wav file.

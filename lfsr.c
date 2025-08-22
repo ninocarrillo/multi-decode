@@ -34,6 +34,7 @@ long int Unscramble(LFSR_struct *LFSR, long int data, int in_bit_count, int targ
 }
 
 unsigned long int GetPRN(LFSR_struct *LFSR) {
+    LFSR->ShiftRegister |= LFSR->InputMask;
     if (LFSR->ShiftRegister & LFSR->FeedbackMask) {
         LFSR->ShiftRegister ^= LFSR->Polynomial;
     }
