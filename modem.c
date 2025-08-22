@@ -16,6 +16,11 @@
 #include "afsk.h"
 
 int main(int arg_count, char* arg_values[]) {
+	
+	clock_t start_time, end_time;
+	 double cpu_time_used;
+	start_time = clock(); // Record the start time
+	
 	FILE *logfile;
 	logfile = fopen("md.log", "w");
 	LogNewline(logfile);
@@ -192,6 +197,11 @@ int main(int arg_count, char* arg_values[]) {
 	FILE *output_data_file = fopen(arg_values[5], "a");
 	fprintf(output_data_file, "%s, %i, %f, %i\n", arg_values[1], cma_span, cma_mu, AX25_Receiver.PacketCount);
 	fclose(output_data_file);
+
+	end_time = clock(); // Record the end time
+
+	cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
+	printf("Elapsed CPU time: %f seconds\n", cpu_time_used);
 
 	return 0;
 }
