@@ -39,6 +39,7 @@ int main(int arg_count, char* arg_values[]) {
 		printf("Not enough arguments.\nUsage: modem <wavfile_name> <CMA span> <CMA gain> <decoder type> <result file>\n");
 		printf("decoder type 1: AFSK 1200 Correlator\n");
 		printf("decoder type 2: AFSK 1200 PLL\n");
+		printf("decoder type 2: AFSK 1200 Quadrature\n");
 		LogString(logfile, "Not enough arguments, exiting.\n");
 		return -1;
 	}
@@ -78,6 +79,19 @@ int main(int arg_count, char* arg_values[]) {
 	float pll_p_gain = atof(arg_values[3]);
 	int decoder_type = atoi(arg_values[4]);
 	
+
+	AFSKQuadDemod_struct AFSKQuadDemodulator;
+	InitAFSKQuad( \
+		logfile, \
+		&AFSKQuadDemodulator, \
+		file_header.SampleRate, \
+		/* low cut freq */ 1000, \
+		/* high cut freq */ 2400, \
+		/* output filter cutoff freq */ 800, \
+		/* equalizer span */ cma_span, \
+		/* equalizer gain mu */ cma_mu \
+	);
+
 	AFSKPLLDemod_struct AFSKPLLDemodulator;
 	InitAFSKPLL( \
 		logfile, \
@@ -142,6 +156,8 @@ int main(int arg_count, char* arg_values[]) {
 	long int data;
 	LogNewline(logfile);
 	LogString(logfile, "Sliced Data: ");
+	float buffer_sum = 0;
+	float buffer_count = 0;
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
 			float input_sample = (float)buffer[i];
@@ -149,7 +165,11 @@ int main(int arg_count, char* arg_values[]) {
 				buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
 			} else if (decoder_type == 2) {
 				buffer[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+			} else if (decoder_type == 3) {
+				buffer[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
 			}
+			buffer_sum += buffer[i];
+			buffer_count += 1;
 			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
 			data = Slice2(&Slicer, buffer[i]);
 			if (data > 0) {
@@ -175,6 +195,7 @@ int main(int arg_count, char* arg_values[]) {
 			//buffer[i] = 16384 * PLL.NCO.SineOutput;
 		}
 
+
 		// Interleave the data for Stereo wav file.
 		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);
 		fwrite(&buffer3, 2, interleave_count, output_file);
@@ -188,6 +209,10 @@ int main(int arg_count, char* arg_values[]) {
 
 		}
 	}
+
+	buffer_sum = buffer_sum / buffer_count;
+	printf("Demod DC offset: %f\n", buffer_sum);
+
 	printf("Total Count: %d\n", AX25_Receiver.PacketCount);
 	
 	fclose(output_file);

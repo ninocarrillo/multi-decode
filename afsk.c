@@ -324,3 +324,144 @@ float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int 
 
 	return creal(result);
 }
+
+void InitAFSKQuad(FILE *logfile, AFSKQuadDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float output_cut, int cma_span, float cma_mu) {
+	
+	LogNewline(logfile);
+	LogString(logfile, "Initializing AFSK Quadrature Demodulator.");
+	
+	InitEnvelopeDetector(&demod->EnvelopeDetector, sample_rate, /*attack*/ 500, /*sustain*/ 0, /*decay*/2.5); 
+
+	// Create the input Bandpass filter spanning 7 milliseconds of input samples.
+	int input_tap_count = 0.007 * sample_rate;
+	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Input filter tap count: ");
+	LogInt(logfile, demod->InputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->InputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->InputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Create a Hilbert transform filter spanning 3 milliseconds of input samples.
+	int hilbert_tap_count = 0.003 * sample_rate;
+	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Hilbert tap count: ");
+	LogInt(logfile, demod->HilbertFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->HilbertFilter.TapCount; i++) {
+		LogFloat(logfile, demod->HilbertFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	LogNewline(logfile);
+	LogString(logfile, "Delay tap count: ");
+	LogInt(logfile, demod->DelayFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->DelayFilter.TapCount; i++) {
+		LogFloat(logfile, demod->DelayFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	InitCMAEqualizer(&demod->EQ, cma_span, cma_mu);
+	LogNewline(logfile);
+	LogString(logfile, "CMA Equalizer tap count: ");
+	LogInt(logfile, demod->EQ.Filter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->EQ.Filter.TapCount; i++) {
+		LogFloat(logfile, demod->EQ.Filter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+
+	// Create the output Lowpass filter spanning 3 milliseconds.
+	int output_tap_count = 0.003 * sample_rate;
+	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Output filter tap count: ");
+	LogInt(logfile, demod->OutputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->OutputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->OutputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Initialize buffers.
+	InitCB(&demod->Buffer1, demod->InputFilter.TapCount);
+	InitCB(&demod->Buffer2, demod->HilbertFilter.TapCount);
+	InitCB(&demod->Buffer4, demod->OutputFilter.TapCount);
+
+	// Calculate the sample delay.
+	demod->SampleDelay = 0;
+	demod->SampleDelay += demod->InputFilter.TapCount;
+	demod->SampleDelay += demod->HilbertFilter.TapCount;
+	demod->SampleDelay += demod->OutputFilter.TapCount;
+
+}
+
+float DemodAFSKQuad(FILE *logfile, AFSKQuadDemod_struct *demod, float sample, int carrier_detect) {
+
+	// Place sample in circular buffer.
+	PutCB(&demod->Buffer1, sample);
+
+	// Apply input filter.
+	float complex complex_signal = FilterCB(&demod->Buffer1, &demod->InputFilter);
+
+	// Place filtered sample in circular buffer.
+	PutCB(&demod->Buffer2, creal(complex_signal));
+
+	// Create quadrature signal.
+	complex_signal = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
+	
+	// Equalize.
+	if (carrier_detect > 0) {
+		complex_signal = CMAEqFeedback(&demod->EQ, complex_signal, 2);
+	} else {
+		complex_signal = CMAEq(&demod->EQ, complex_signal);
+	}
+
+	// Apply AGC
+	//float envelope = EnvelopeDetect(&demod->EnvelopeDetector, creal(complex_signal));
+	//if (envelope != 0) {
+	//	complex_signal = (creal(complex_signal) / envelope) + (cimag(complex_signal) / envelope)*I ;
+	//}
+
+	float i, q;
+	if (creal(complex_signal) > 0) {
+		i = 1;
+	} else {
+		i = -1;
+	}
+	if (cimag(complex_signal) > 0) {
+		q = 1;
+	} else {
+		q = -1;
+	}
+
+	// Apply FM demodulation
+
+	float result = (q - demod->Q2) * demod->I1;
+	result -= ((i - demod->I2) * demod->Q1);
+
+
+	// Place result in buffer.
+	PutCB(&demod->Buffer4, result);
+
+	demod->I2 = demod->I1;
+	demod->I1 = i;
+	demod->Q2 = demod->Q1;
+	demod->Q1 = q;
+
+	float gain = 4000;
+	// Apply output filter.
+	result = (FilterCB(&demod->Buffer4, &demod->OutputFilter) * gain) + (1.895 * gain);
+	
+
+	return creal(result);
+}
