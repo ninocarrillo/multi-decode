@@ -13,6 +13,7 @@
 #include "lfsr.h"
 #include "nco.h"
 #include "pll.h"
+#include "afsk.h"
 
 int main(int arg_count, char* arg_values[]) {
 	FILE *logfile;
@@ -29,8 +30,10 @@ int main(int arg_count, char* arg_values[]) {
 		LogString(logfile, arg_values[i]);
 	}
 	
-	if (arg_count < 5) {
-		printf("Not enough arguments.\nUsage: modem <wavfile_name> <CMA span> <CMA gain> <result file>\n");
+	if (arg_count < 6) {
+		printf("Not enough arguments.\nUsage: modem <wavfile_name> <CMA span> <CMA gain> <decoder type> <result file>\n");
+		printf("decoder type 1: AFSK 1200 Correlator\n");
+		printf("decoder type 2: AFSK 1200 PLL\n");
 		LogString(logfile, "Not enough arguments, exiting.\n");
 		return -1;
 	}
@@ -66,6 +69,7 @@ int main(int arg_count, char* arg_values[]) {
 	
 	int cma_span = atoi(arg_values[2]);
 	float cma_mu = atof(arg_values[3]);
+	int decoder_type = atoi(arg_values[4]);
 	
 	AFSKDemod_struct AFSKDemodulator;
 	InitAFSK( \
@@ -135,7 +139,11 @@ int main(int arg_count, char* arg_values[]) {
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
 			float input_sample = (float)buffer[i];
-			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+			if (decoder_type == 1) {
+				buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+			} else if (decoder_type == 2) {
+				
+			}
 			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
 			data = Slice2(&Slicer, buffer[i]);
 			if (data > 0) {
@@ -180,7 +188,7 @@ int main(int arg_count, char* arg_values[]) {
 	fclose(wav_file);
 	fclose(logfile);
 	
-	FILE *output_data_file = fopen(arg_values[4], "a");
+	FILE *output_data_file = fopen(arg_values[5], "a");
 	fprintf(output_data_file, "%s, %i, %f, %i\n", arg_values[1], cma_span, cma_mu, AX25_Receiver.PacketCount);
 	fclose(output_data_file);
 

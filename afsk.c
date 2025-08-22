@@ -1,0 +1,199 @@
+#include <math.h>
+#include "afsk.h"
+#include "log.h"
+#include "dsp.h"
+
+
+void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, float symbol_rate) {
+	//int tap_count = 1.5 * sample_rate / symbol_rate;
+	int tap_count = 1.0 * sample_rate / symbol_rate;
+	correlator->SampleRate = sample_rate;
+	correlator->Gain = 1;
+	correlator->TapCount = tap_count;
+	for (int i = 0; i < tap_count; i++) {
+		float t = (M_PI * freq * 2 * i) / (sample_rate);
+		correlator->Taps[i] = cos(t);
+	}
+	
+	//int N = tap_count - 1;
+	// Apply a Hann window to the filter.
+	//for (int i = 0; i < tap_count; i++) {
+	//	float window = pow(sin(M_PI * i / N), 2);
+	//	correlator->Taps[i] *= window;
+	//}
+	
+	// Normalize autocorrelation
+	// First, calculate the autocorrelation
+	correlator->PreAuto = 0;
+	for (int i = 0; i < tap_count; i++) {
+		correlator->PreAuto += pow(correlator->Taps[i],2);
+	}
+	for (int i = 0; i < tap_count; i++) {
+		correlator->Taps[i] /= sqrt(correlator->PreAuto);
+	}
+	correlator->Auto = 0;
+	for (int i = 0; i < tap_count; i++) {
+		correlator->Auto += pow(correlator->Taps[i],2);
+	}
+}
+
+float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
+
+	// Place sample in circular buffer.
+	PutCB(&demod->Buffer1, sample);
+
+	// Apply input filter.
+	float complex result = FilterCB(&demod->Buffer1, &demod->InputFilter);
+
+	// Place filtered sample in circular buffer.
+	PutCB(&demod->Buffer2, creal(result));
+
+	// Create quadrature signal.
+	result = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
+	
+	// Equalize.
+	if (carrier_detect > 0) {
+		result = CMAEqFeedback(&demod->EQ, result, 2);
+		//result = CMAEqFeedbackNorm(&demod->EQ, result, 1);
+	} else {
+		result = CMAEq(&demod->EQ, result);
+	}
+
+	// Place quadrature signal in complex circular buffer.
+	PutComplexCB(&demod->Buffer3, result);
+
+	// Apply the mark correlator.
+	float mark = CorrelateComplexCB(&demod->Buffer3, &demod->Mark);
+
+	// Apply the space correlator.
+	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
+
+	result = (mark*mark) - (space*space);
+	//result = mark - space;
+
+	// Place result in buffer.
+	PutCB(&demod->Buffer4, creal(1024 * result));
+
+	// Apply output filter.
+	//result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+	result = 1024 * result;
+
+	return creal(result);
+}
+
+void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut, int cma_span, float cma_mu) {
+	
+	LogNewline(logfile);
+	LogString(logfile, "Initializing AFSK Demodulator.");
+
+	// Create the input Bandpass filter spanning 7 milliseconds of input samples.
+	int input_tap_count = 0.007 * sample_rate;
+	GenBandFIR(&demod->InputFilter, low_cut, high_cut, sample_rate, input_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Input filter tap count: ");
+	LogInt(logfile, demod->InputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->InputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->InputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Create a Hilbert transform filter spanning 3 milliseconds of input samples.
+	int hilbert_tap_count = 0.003 * sample_rate;
+	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Hilbert tap count: ");
+	LogInt(logfile, demod->HilbertFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->HilbertFilter.TapCount; i++) {
+		LogFloat(logfile, demod->HilbertFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	LogNewline(logfile);
+	LogString(logfile, "Delay tap count: ");
+	LogInt(logfile, demod->DelayFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->DelayFilter.TapCount; i++) {
+		LogFloat(logfile, demod->DelayFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	InitCMAEqualizer(&demod->EQ, cma_span, cma_mu);
+	//InitCMAEqualizer(&demod->EQ, 9, mu);
+	LogNewline(logfile);
+	LogString(logfile, "CMA Equalizer tap count: ");
+	LogInt(logfile, demod->EQ.Filter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->EQ.Filter.TapCount; i++) {
+		LogFloat(logfile, demod->EQ.Filter.Taps[i]);
+		LogString(logfile, ",");
+	}
+	
+	// Generate mark correlator taps spanning 1 symbol.
+	InitToneCorrelator(&demod->Mark, tone1, sample_rate, symbol_rate);
+	LogNewline(logfile);
+	LogString(logfile, "Mark Correlator Tap Count: ");
+	LogInt(logfile, demod->Mark.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Uncorrected Autocorrelation: ");
+	LogFloat(logfile, demod->Mark.PreAuto);
+	LogNewline(logfile);
+	LogString(logfile, "Corrected Autocorrelation: ");
+	LogFloat(logfile, demod->Mark.Auto);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->Mark.TapCount; i++) {
+		LogFloat(logfile, demod->Mark.Taps[i]);
+		LogString(logfile, ",");
+	}	
+
+	// Generate space correlator taps spanning 1 symbol.
+	InitToneCorrelator(&demod->Space, tone2, sample_rate, symbol_rate);
+	LogNewline(logfile);
+	LogString(logfile, "Space Correlator Tap Count: ");
+	LogNewline(logfile);
+	LogString(logfile, "Uncorrected Autocorrelation: ");
+	LogFloat(logfile, demod->Space.PreAuto);
+	LogNewline(logfile);
+	LogString(logfile, "Corrected Autocorrelation: ");
+	LogFloat(logfile, demod->Space.Auto);
+	LogNewline(logfile);
+	LogInt(logfile, demod->Space.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->Space.TapCount; i++) {
+		LogFloat(logfile, demod->Space.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Create the output Lowpass filter spanning 5 symbols.
+	int output_tap_count = 5 * sample_rate / symbol_rate;
+	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Output filter tap count: ");
+	LogInt(logfile, demod->OutputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->OutputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->OutputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
+	// Initialize buffers.
+	InitCB(&demod->Buffer1, demod->InputFilter.TapCount);
+	InitCB(&demod->Buffer2, demod->HilbertFilter.TapCount);
+	InitComplexCB(&demod->Buffer3, demod->Mark.TapCount);
+	InitCB(&demod->Buffer4, demod->OutputFilter.TapCount);
+
+	// Calculate the sample delay.
+	demod->SampleDelay = 0;
+	demod->SampleDelay += demod->InputFilter.TapCount;
+	demod->SampleDelay += demod->HilbertFilter.TapCount;
+	demod->SampleDelay += demod->Mark.TapCount;
+	demod->SampleDelay += demod->OutputFilter.TapCount;
+
+}
