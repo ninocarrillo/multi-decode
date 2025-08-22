@@ -82,7 +82,7 @@ int main(int arg_count, char* arg_values[]) {
 		/* high cut freq */ 2500, \
 		/* pll set freq */ 1700, \
 		/* pll loop cutoff */ 3000, \
-		/* pll_p_gain */ 11000, \
+		/* pll_p_gain */ 9000, \
 		/* pll_i_gain */ 0, \
 		/* pll_i_limit */ 0, \
 		/* output filter cutoff freq */ 950, \
@@ -130,24 +130,6 @@ int main(int arg_count, char* arg_values[]) {
 	
 	fseek(wav_file, 44, SEEK_SET);
 	count = fread(&buffer, 2, READ_SIZE, wav_file);
-	
-
-	PLL_struct PLL;
-	InitPLL(&PLL, file_header.SampleRate, /*set freq*/ 1700, /*loop cutoff*/ 1200, /* p */10000, /* i */0, /* i lim */ 500);
-	LogNewline(logfile);
-	LogString(logfile, "IIR Coefs");
-	LogString(logfile, "     b0: ");
-	LogFloat(logfile, PLL.LoopFilter.b0);
-	LogString(logfile, "     b1: ");
-	LogFloat(logfile, PLL.LoopFilter.b1);
-	LogString(logfile, "     a1: ");
-	LogFloat(logfile, PLL.LoopFilter.a1);
-	LogString(logfile, "     radian cutoff: ");
-	LogFloat(logfile, PLL.LoopFilter.radian_cutoff);
-	LogString(logfile, "     warp cutoff: ");
-	LogFloat(logfile, PLL.LoopFilter.warp_cutoff);
-	LogString(logfile, "     omega_T: ");
-	LogFloat(logfile, PLL.LoopFilter.omega_T);
 
 	int flushed = 0;
 

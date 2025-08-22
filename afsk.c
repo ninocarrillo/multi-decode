@@ -285,12 +285,6 @@ void InitAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample_rate, f
 
 float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int carrier_detect) {
 
-	// Apply AGC
-	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, sample);
-	if (envelope != 0) {
-		sample = sample / envelope;
-	}
-
 	// Place sample in circular buffer.
 	PutCB(&demod->Buffer1, sample);
 
@@ -311,8 +305,15 @@ float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int 
 		result = CMAEq(&demod->EQ, result);
 	}
 
+	result = creal(result);
+	// Apply AGC
+	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, result);
+	if (envelope != 0) {
+		result = result / envelope;
+	}
+
 	// Apply PLL to real part
-	result = UpdatePLL(&demod->PLL, result);
+	result = UpdatePLL(&demod->PLL, creal(result));
 
 	// Place result in buffer.
 	PutCB(&demod->Buffer4, creal(result));
