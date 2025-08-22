@@ -11,6 +11,15 @@ void InitPLL(PLL_struct *this, float set_freq, float filter_cutoff, float p_gain
 }
 
 float UpdatePLL(PLL_struct *this, float sample) {
-
+	this->Mixer = GetNCOSampleFromFreq(&this->NCO, this->SetFrequency + this->Control) * sample;
+	this->LoopFilterOutput = UpdateIIROrder1(&this->LoopFilter, this->Mixer);
+	this->Integral += this->IntegralGain * this->LoopFilterOutput;
+	if (this->Integral > this->IntegralLimit) {
+		this->Integral = this->IntegralLimit;
+	} else if (this->Integral < -this->IntegralLimit) {
+		this->Integral = -this->IntegralLimit;
+	}
+	this->Proportional = this->ProportionalGain * this->LoopFilterOutput;
+	this->Control = this->Proportional + this->Integral;
 	return this->Control;
 }

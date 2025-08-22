@@ -8,6 +8,8 @@ typedef struct {
     IIR_Order1_struct LoopFilter;
     float SetFrequency;
     float Control;
+    float Mixer;
+    float LoopFilterOutput;
     float ProportionalGain;
     float IntegralGain;
     float Proportional;
