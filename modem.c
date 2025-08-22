@@ -108,34 +108,33 @@ int main(int arg_count, char* arg_values[]) {
 	fseek(wav_file, 44, SEEK_SET);
 	count = fread(&buffer, 2, READ_SIZE, wav_file);
 	
+
+	PLL_struct PLL;
+	InitPLL(&PLL, file_header.SampleRate, /*set freq*/ 1700, /*loop cutoff*/ 1200, /* p */10000, /* i */0, /* i lim */ 500);
+	LogNewline(logfile);
+	LogString(logfile, "IIR Coefs");
+	LogString(logfile, "     b0: ");
+	LogFloat(logfile, PLL.LoopFilter.b0);
+	LogString(logfile, "     b1: ");
+	LogFloat(logfile, PLL.LoopFilter.b1);
+	LogString(logfile, "     a1: ");
+	LogFloat(logfile, PLL.LoopFilter.a1);
+	LogString(logfile, "     radian cutoff: ");
+	LogFloat(logfile, PLL.LoopFilter.radian_cutoff);
+	LogString(logfile, "     warp cutoff: ");
+	LogFloat(logfile, PLL.LoopFilter.warp_cutoff);
+	LogString(logfile, "     omega_T: ");
+	LogFloat(logfile, PLL.LoopFilter.omega_T);
+
+	int flushed = 0;
+
 	int interleave_count;
 	long int data;
 	LogNewline(logfile);
 	LogString(logfile, "Sliced Data: ");
-
-	NCO_struct NCO;
-	InitNCO(&NCO, 16, 31, 7, file_header.SampleRate);
-	LogNewline(logfile);
-	LogString(logfile, "NCO data:");
-	LogNewline(logfile);
-	{
-		int i;
-		for (i = 0; i < 256; i++) {
-			LogInt(logfile, i);
-			LogFloat(logfile, NCO.Wavetable[i]);
-			LogString(logfile, ", ");
-
-		}
-	}
-
-	PLL_struct PLL;
-	InitPLL(&PLL, file_header.SampleRate, 1050, 500, 0.01, 0.0001, 100);
-	
-
-	int flushed = 0;
-
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
+			float input_sample = (float)buffer[i];
 			buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
 			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
 			data = Slice2(&Slicer, buffer[i]);
@@ -156,13 +155,10 @@ int main(int arg_count, char* arg_values[]) {
 					//Slicer.MatchDCD = 0;
 				}
 			}
-			buffer2[i] = 1024 *  creal(AFSKDemodulator.Buffer3.Buffer[AFSKDemodulator.Buffer3.Index]);
 			
-
-			//PutCB(&AFSKDemodulator.Buffer2, buffer[i]);
-			//buffer2[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.HilbertFilter);
-			//buffer[i] = FilterCB(&AFSKDemodulator.Buffer2, &AFSKDemodulator.DelayFilter);
-			buffer[i] = 32767*GetNCOSampleFromFreq(&NCO, 1000);
+			float control = UpdatePLL(&PLL, input_sample/65536);
+			buffer2[i] = control;
+			buffer[i] = 16384 * PLL.NCO.SineOutput;
 		}
 
 		// Interleave the data for Stereo wav file.

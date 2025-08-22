@@ -21,6 +21,6 @@ float UpdatePLL(PLL_struct *this, float sample) {
 		this->Integral = -this->IntegralLimit;
 	}
 	this->Proportional = this->ProportionalGain * this->LoopFilterOutput;
-	this->Control = this->Proportional + this->Integral;
+	this->Control = (this->Proportional + this->Integral);
 	return this->Control;
 }

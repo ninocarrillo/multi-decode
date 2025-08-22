@@ -4,10 +4,13 @@
 void InitIIROrder1(IIR_Order1_struct *iir, float sample_rate, float cutoff_freq) {
 	// Convert cutoff freq to radians/sec
 	float radian_cutoff = 2 * M_PI * cutoff_freq;
+	iir->radian_cutoff = radian_cutoff;
 	// prewarp cutoff freq for bilinear Z transform
-	float warp_cutoff = 2 * sample_rate * tan(radian_cutoff / 2 * sample_rate);
+	float warp_cutoff = 2 * sample_rate * tan(radian_cutoff / (2 * sample_rate));
+	iir->warp_cutoff = warp_cutoff;
 	// intermediate value
 	float omega_T = warp_cutoff / sample_rate;
+	iir->omega_T = omega_T;
 	// denominator
 	iir->a1 = (2 - omega_T) / (2 + omega_T);
 	// numerator values

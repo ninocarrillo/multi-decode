@@ -26,6 +26,9 @@ float GetNCOSampleFromFCW(NCO_struct *this, int fcw) {
 }
 
 float GetNCOSampleFromFreq(NCO_struct *this, float freq) {
+	if (freq < 0) {
+		freq = 0;
+	}
 	int fcw = freq * (float)this->PAccSize / (float)this->SampleRate;
 	this->PAcc += fcw;
 	this->PAcc &= this->PAccMask;

@@ -7,6 +7,9 @@ typedef struct {
     float b1;
     float x1;
     float y1;
+	float radian_cutoff;
+	float omega_T;
+	float warp_cutoff;
 } IIR_Order1_struct;
 
 float UpdateIIROrder1(IIR_Order1_struct *, float);
