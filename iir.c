@@ -1,5 +1,9 @@
 #include "iir.h"
 
+void InitIIROrder1(IIR_Order1_struct *iir, float cutoff_freq) {
+
+}
+
 float UpdateIIROrder1(IIR_Order1_struct *iir, float x0) {
     float result = 0;
 	result += x0 * iir->b0;

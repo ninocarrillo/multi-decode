@@ -10,4 +10,5 @@ typedef struct {
 } IIR_Order1_struct;
 
 float UpdateIIROrder1(IIR_Order1_struct *, float);
+void InitIIROrder1(IIR_Order1_struct*, float);
 #endif
