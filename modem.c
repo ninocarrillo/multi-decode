@@ -97,14 +97,14 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKPLLDemodulator, \
 		file_header.SampleRate, \
-		/* low cut freq */ 900, \
-		/* high cut freq */ 2500, \
+		/* low cut freq */ 300, \
+		/* high cut freq */ 3000, \
 		/* pll set freq */ 1700, \
-		/* pll loop cutoff */ 3000, \
-		/* pll_p_gain */ 9000, \
-		/* pll_i_gain */ 0, \
-		/* pll_i_limit */ 0, \
-		/* output filter cutoff freq */ 950, \
+		/* pll loop cutoff */ 3500, \
+		/* pll_p_gain */3500, \
+		/* pll_i_gain */ 1, \
+		/* pll_i_limit */ 50, \
+		/* output filter cutoff freq */ 900, \
 		/* equalizer span */ cma_span, \
 		/* equalizer gain mu */ cma_mu \
 	);	
@@ -132,8 +132,22 @@ int main(int arg_count, char* arg_values[]) {
 		/* feedback parameter */ 0.75 \
 	);
 	
+	Data_Slicer_struct NSlicer;
+	InitSliceN( \
+		&NSlicer, \
+		file_header.SampleRate, \
+		/* symbol rate */ 1200, \
+		/* feedback parameter */ 0.9, \
+		/* bits per symbol */ 2 \
+	);
+	
+
+	LogNewline(logfile);
+	LogString(logfile, "SlicerN Interval: ");
+	LogFloat(logfile, NSlicer.Interval);
+	
 	LFSR_struct LFSR;
-	InitLFSR(3, 0, &LFSR);
+	InitLFSR(3 * 0x21001, 1, &LFSR);
 
 	AX25_Receiver_struct AX25_Receiver;
 	InitAX25(&AX25_Receiver);
@@ -171,7 +185,8 @@ int main(int arg_count, char* arg_values[]) {
 			buffer_sum += buffer[i];
 			buffer_count += 1;
 			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
-			data = Slice2(&Slicer, buffer[i]);
+			//data = Slice2(&Slicer, buffer[i]);
+			data = SliceN(&NSlicer, buffer[i]);
 			if (data > 0) {
 				// Apply differential decoder
 				data = Unscramble(&LFSR, data, Slicer.AccumulatorBitWidth, Slicer.AccumulatorBitWidth);
@@ -195,6 +210,7 @@ int main(int arg_count, char* arg_values[]) {
 			//buffer[i] = 16384 * PLL.NCO.SineOutput;
 		}
 
+		
 
 		// Interleave the data for Stereo wav file.
 		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);

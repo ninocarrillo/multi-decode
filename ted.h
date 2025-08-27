@@ -9,7 +9,12 @@ typedef struct {
     float ClockStep;
     float LastSample;
     float LockRate;
+	float Interval;
+	int BitsPerSymbol;
     int BitIndex;
+	int Symbol;
+	int SymbolTap;
+	int BitsLeftInSymbol;
     long int DataAccumulator;
     int SyncDCD;
     int MatchDCD;
@@ -20,4 +25,6 @@ typedef struct {
 void InitSlice2(Data_Slicer_struct *, float, float, float);
 long int Slice2(Data_Slicer_struct *, float);
 long int Slice2Eq(Data_Slicer_struct *, CMA_Equalizer_struct *, float);
+void InitSliceN(Data_Slicer_struct *, float , float , float , int );
+long int SliceN(Data_Slicer_struct *, float);
 #endif

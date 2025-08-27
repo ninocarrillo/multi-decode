@@ -314,6 +314,8 @@ float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int 
 
 	// Apply PLL to real part
 	result = UpdatePLL(&demod->PLL, creal(result));
+	
+	result = -demod->PLL.Proportional;
 
 	// Place result in buffer.
 	PutCB(&demod->Buffer4, creal(result));
