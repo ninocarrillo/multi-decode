@@ -7,13 +7,15 @@
 
 void InitAX25(AX25_Receiver_struct *rx) {
     rx->PacketCount = 0;
+    rx->UniquePacketCount = 0;
     rx->BitIndex = 0;
     rx->WordIndex = 0;
     rx->OneCounter = 0;	
 	rx->NewPacket = 0;
+    rx->CRC = -1;
 }
 
-void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, long int data, int bit_width) {
+void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, long int data, int bit_width, int other_crc) {
 	long int input_mask = 1;
 	input_mask = input_mask << (bit_width - 1);
     int j;
@@ -67,15 +69,23 @@ void AX25Receive(FILE *logfile, AX25_Receiver_struct *rx, long int data, int bit
                         rx->CRC |= ((uint16_t)rx->Buffer[rx->WordIndex + 1]) << 8;
 
                         LogNewline(logfile);
-                        LogString(logfile, "Received Packet with CRC: ");
+                        LogString(logfile, "Receiver ID");
+                        LogInt(logfile, rx->ID);
+                        LogString(logfile, " received Packet with CRC: ");
                         LogHexByte(logfile, rx->CRC >> 8);
                         LogHexByte(logfile, rx->CRC & 0xFF);
-                        LogString(logfile, " Count: ");
+                        LogString(logfile, " Packet Count: ");
                         LogInt(logfile, rx->PacketCount);
                         LogString(logfile, "\n");
                         for (int i = 0; i < rx->WordIndex; i++) {
                             LogHexByte(logfile, rx->Buffer[i]);
                         }
+
+                        if (rx->CRC != other_crc) {
+                            rx->UniquePacketCount++;
+                            LogString(logfile, "\n **UNIQUE PACKET**");
+                        }
+                        LogString(logfile, "\n");
 
                     } 
 

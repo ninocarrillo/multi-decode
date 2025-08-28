@@ -37,5 +37,5 @@ void LogLongHex(FILE *file, long int value) {
 }
 
 void LogHexByte(FILE *file, int value) {
-	fprintf(file, " %2x", value & 0xFF);
+	fprintf(file, " %02X", value & 0xFF);
 }

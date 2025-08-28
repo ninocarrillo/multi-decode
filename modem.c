@@ -69,7 +69,7 @@ int main(int arg_count, char* arg_values[]) {
 	printf("Data Size: %d\n", file_header.DataSize);
 	int32_t count;
 #define READ_SIZE 65536
-	int16_t buffer[READ_SIZE];
+	int16_t buffer1[READ_SIZE];
 	int16_t buffer2[READ_SIZE];
 	int16_t buffer3[READ_SIZE * 2];
 	
@@ -80,10 +80,21 @@ int main(int arg_count, char* arg_values[]) {
 	int decoder_type = atoi(arg_values[4]);
 	
 
-	AFSKQuadDemod_struct AFSKQuadDemodulator;
+	AFSKQuadDemod_struct AFSKQuadDemodulator1;
 	InitAFSKQuad( \
 		logfile, \
-		&AFSKQuadDemodulator, \
+		&AFSKQuadDemodulator1, \
+		file_header.SampleRate, \
+		/* low cut freq */ 1000, \
+		/* high cut freq */ 2400, \
+		/* output filter cutoff freq */ 800, \
+		/* equalizer span */ cma_span, \
+		/* equalizer gain mu */ cma_mu \
+	);
+	AFSKQuadDemod_struct AFSKQuadDemodulator2;
+	InitAFSKQuad( \
+		logfile, \
+		&AFSKQuadDemodulator2, \
 		file_header.SampleRate, \
 		/* low cut freq */ 1000, \
 		/* high cut freq */ 2400, \
@@ -92,27 +103,57 @@ int main(int arg_count, char* arg_values[]) {
 		/* equalizer gain mu */ cma_mu \
 	);
 
-	AFSKPLLDemod_struct AFSKPLLDemodulator;
+	AFSKPLLDemod_struct AFSKPLLDemodulator1;
 	InitAFSKPLL( \
 		logfile, \
-		&AFSKPLLDemodulator, \
+		&AFSKPLLDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 300, \
-		/* high cut freq */ 3000, \
+		/* low cut freq */ 900, \
+		/* high cut freq */ 2500, \
 		/* pll set freq */ 1700, \
-		/* pll loop cutoff */ 3500, \
-		/* pll_p_gain */3500, \
-		/* pll_i_gain */ 1, \
+		/* pll loop cutoff */ 3800, \
+		/* pll_p_gain */5000, \
+		/* pll_i_gain */ 0, \
 		/* pll_i_limit */ 50, \
-		/* output filter cutoff freq */ 900, \
+		/* output filter cutoff freq */ 1100, \
+		/* equalizer span */ 1, \
+		/* equalizer gain mu */ 0 \
+	);	
+	AFSKPLLDemod_struct AFSKPLLDemodulator2;
+	InitAFSKPLL( \
+		logfile, \
+		&AFSKPLLDemodulator2, \
+		file_header.SampleRate, \
+		/* low cut freq */ 900, \
+		/* high cut freq */ 2500, \
+		/* pll set freq */ 1700, \
+		/* pll loop cutoff */ 3800, \
+		/* pll_p_gain */5000, \
+		/* pll_i_gain */ 0, \
+		/* pll_i_limit */ 50, \
+		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ cma_span, \
 		/* equalizer gain mu */ cma_mu \
 	);	
 	
-	AFSKDemod_struct AFSKDemodulator;
+	AFSKDemod_struct AFSKDemodulator1;
 	InitAFSK( \
 		logfile, \
-		&AFSKDemodulator, \
+		&AFSKDemodulator1, \
+		file_header.SampleRate, \
+		/* low cut freq */ 1000, \
+		/* high cut freq */ 2600, \
+		/* tone 1 freq */ 1200, \
+		/* tone 2 freq */ 2200, \
+		/* symbol rate */ 1200, \
+		/* output filter cutoff freq */ 1100, \
+		/* equalizer span */ cma_span, \
+		/* equalizer gain mu */ cma_mu \
+	);
+	AFSKDemod_struct AFSKDemodulator2;
+	InitAFSK( \
+		logfile, \
+		&AFSKDemodulator2, \
 		file_header.SampleRate, \
 		/* low cut freq */ 1000, \
 		/* high cut freq */ 2600, \
@@ -124,33 +165,52 @@ int main(int arg_count, char* arg_values[]) {
 		/* equalizer gain mu */ cma_mu \
 	);
 
-	Data_Slicer_struct Slicer;
+	Data_Slicer_struct Slicer1;
 	InitSlice2( \
-		&Slicer, \
+		&Slicer1, \
+		file_header.SampleRate, \
+		/* symbol rate */ 1200, \
+		/* feedback parameter */ 0.75 \
+	);
+	Data_Slicer_struct Slicer2;
+	InitSlice2( \
+		&Slicer2, \
 		file_header.SampleRate, \
 		/* symbol rate */ 1200, \
 		/* feedback parameter */ 0.75 \
 	);
 	
-	Data_Slicer_struct NSlicer;
+	Data_Slicer_struct NSlicer1;
 	InitSliceN( \
-		&NSlicer, \
+		&NSlicer1, \
+		file_header.SampleRate, \
+		/* symbol rate */ 1200, \
+		/* feedback parameter */ 0.9, \
+		/* bits per symbol */ 2 \
+	);
+	Data_Slicer_struct NSlicer2;
+	InitSliceN( \
+		&NSlicer2, \
 		file_header.SampleRate, \
 		/* symbol rate */ 1200, \
 		/* feedback parameter */ 0.9, \
 		/* bits per symbol */ 2 \
 	);
 	
+	// G3RUH Pily is 0x21001 with Inversion
+	// Differential poly is 0x3
+	// Normal AFSK does not have Inversion
+	LFSR_struct LFSR1;
+	InitLFSR(0x3, 0, &LFSR1);
+	LFSR_struct LFSR2;
+	InitLFSR(0x3, 0, &LFSR2);
 
-	LogNewline(logfile);
-	LogString(logfile, "SlicerN Interval: ");
-	LogFloat(logfile, NSlicer.Interval);
-	
-	LFSR_struct LFSR;
-	InitLFSR(3 * 0x21001, 1, &LFSR);
-
-	AX25_Receiver_struct AX25_Receiver;
-	InitAX25(&AX25_Receiver);
+	AX25_Receiver_struct AX25_Receiver1;
+	InitAX25(&AX25_Receiver1);
+	AX25_Receiver1.ID = 1;
+	AX25_Receiver_struct AX25_Receiver2;
+	InitAX25(&AX25_Receiver2);
+	AX25_Receiver2.ID = 2;
 
 	FILE *output_file = fopen("./output.wav", "wb");
 	// Make this a stereo wav file.
@@ -158,11 +218,11 @@ int main(int arg_count, char* arg_values[]) {
 	file_header.BlockSize = 16;
 	file_header.BytesPerBlock = 2 * 16 / 8;
 	file_header.BytesPerSec = file_header.SampleRate * 2 * 16 / 8;
-	file_header.DataSize = (file_header.DataSize + AFSKDemodulator.SampleDelay) * 2;
+	file_header.DataSize = (file_header.DataSize + AFSKDemodulator1.SampleDelay) * 2;
 	fwrite(&file_header, 1, 44, output_file);
 	
 	fseek(wav_file, 44, SEEK_SET);
-	count = fread(&buffer, 2, READ_SIZE, wav_file);
+	count = fread(&buffer1, 2, READ_SIZE, wav_file);
 
 	int flushed = 0;
 
@@ -174,69 +234,71 @@ int main(int arg_count, char* arg_values[]) {
 	float buffer_count = 0;
 	while (count > 0) {
 		for (int i = 0; i < count; i++) {
-			float input_sample = (float)buffer[i];
+			float input_sample = (float)buffer1[i];
 			if (decoder_type == 1) {
-				buffer[i] = DemodAFSK(logfile, &AFSKDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+				buffer1[i] = DemodAFSK(logfile, &AFSKDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
 			} else if (decoder_type == 2) {
-				buffer[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+				buffer1[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
 			} else if (decoder_type == 3) {
-				buffer[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator, (float)buffer[i] / (float)65536, Slicer.MatchDCD);
+				buffer1[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
 			}
-			buffer_sum += buffer[i];
-			buffer_count += 1;
-			//data = Slice2Eq(&Slicer, &AFSKDemodulator.EQ, buffer[i]);
-			//data = Slice2(&Slicer, buffer[i]);
-			data = SliceN(&NSlicer, buffer[i]);
+			data = Slice2(&Slicer1, buffer1[i]);
 			if (data > 0) {
-				// Apply differential decoder
-				data = Unscramble(&LFSR, data, Slicer.AccumulatorBitWidth, Slicer.AccumulatorBitWidth);
-				AX25Receive(logfile, &AX25_Receiver, data, Slicer.AccumulatorBitWidth);
-				if (AX25_Receiver.NewPacket) {
-					AX25_Receiver.NewPacket = 0;
-					LogNewline(logfile);
-					LogString(logfile, "Equalizer Taps: ");
-					for (int i = 0; i < AFSKDemodulator.EQ.Filter.TapCount; i++) {
-						LogComplex(logfile, AFSKDemodulator.EQ.Filter.Taps[i]);
-					}
-					LogNewline(logfile);
-					LogFloat(logfile, AFSKDemodulator.EQ.mu);
-					//ResetCMATaps(&AFSKDemodulator.EQ);
-					//Slicer.MatchDCD = 0;
+				data = Unscramble(&LFSR1, data, Slicer1.AccumulatorBitWidth, Slicer1.AccumulatorBitWidth);
+				AX25Receive(logfile, &AX25_Receiver1, data, Slicer1.AccumulatorBitWidth, AX25_Receiver2.CRC);
+				if (AX25_Receiver1.CRC == AX25_Receiver2.CRC) {
+					AX25_Receiver2.CRC = -1;
+					AX25_Receiver1.CRC = -1;
 				}
 			}
-			
-			//float control = UpdatePLL(&PLL, input_sample/65536);
-			//buffer2[i] = control;
-			//buffer[i] = 16384 * PLL.NCO.SineOutput;
+
+
+			if (decoder_type == 1) {
+				buffer2[i] = DemodAFSK(logfile, &AFSKDemodulator2, input_sample / (float)65536, Slicer2.MatchDCD);
+			} else if (decoder_type == 2) {
+				buffer2[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator2, input_sample / (float)65536, Slicer2.MatchDCD);
+			} else if (decoder_type == 3) {
+				buffer2[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator2, input_sample / (float)65536, Slicer2.MatchDCD);
+			}
+			data = Slice2(&Slicer2, buffer2[i]);
+			if (data > 0) {
+				data = Unscramble(&LFSR2, data, Slicer2.AccumulatorBitWidth, Slicer2.AccumulatorBitWidth);
+				AX25Receive(logfile, &AX25_Receiver2, data, Slicer2.AccumulatorBitWidth, AX25_Receiver1.CRC);
+				if (AX25_Receiver1.CRC == AX25_Receiver2.CRC) {
+					AX25_Receiver1.CRC = -1;
+					AX25_Receiver2.CRC = -1;
+				}
+			}
+
+
+
+
 		}
 
-		
-
 		// Interleave the data for Stereo wav file.
-		interleave_count = InterleaveInt16(buffer3, buffer, buffer2, count);
+		interleave_count = InterleaveInt16(buffer3, buffer1, buffer2, count);
 		fwrite(&buffer3, 2, interleave_count, output_file);
-		count = fread(&buffer, 2, AFSKDemodulator.SampleDelay, wav_file);
+		count = fread(&buffer1, 2, AFSKDemodulator1.SampleDelay, wav_file);
 		if ((count < 1) && (flushed == 0)) {
 			flushed = 1;
 			count = READ_SIZE;
 			for (int i = 0; i < count; i++) {
-				buffer[i] = 0;
+				buffer1[i] = 0;
 			}
 
 		}
 	}
 
-	buffer_sum = buffer_sum / buffer_count;
-	printf("Demod DC offset: %f\n", buffer_sum);
-
-	printf("Total Count: %d\n", AX25_Receiver.PacketCount);
+	printf("Receiver 1 count: %d\n", AX25_Receiver1.PacketCount);
+	printf("Receiver 2 count: %d\n", AX25_Receiver2.PacketCount);
+	printf("Unique count: %d\n", AX25_Receiver1.UniquePacketCount + AX25_Receiver2.UniquePacketCount);
 	
 	fclose(output_file);
 	fclose(wav_file);
 	fclose(logfile);
 	
 	FILE *output_data_file = fopen(arg_values[5], "a");
-	fprintf(output_data_file, "%s, %i, %f, %i\n", arg_values[1], cma_span, cma_mu, AX25_Receiver.PacketCount);
+	fprintf(output_data_file, "%s, %i, %f, %i, %i, %i, %i, %i\n", arg_values[1], cma_span, cma_mu, AX25_Receiver1.PacketCount, AX25_Receiver1.UniquePacketCount, AX25_Receiver2.PacketCount, AX25_Receiver2.UniquePacketCount, AX25_Receiver1.UniquePacketCount + AX25_Receiver2.UniquePacketCount);
 	fclose(output_data_file);
 
 	end_time = clock(); // Record the end time
