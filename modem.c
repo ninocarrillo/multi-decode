@@ -15,6 +15,8 @@
 #include "pll.h"
 #include "afsk.h"
 
+#define WRITE_WAV_OUT 0
+
 int main(int arg_count, char* arg_values[]) {
 	
 	clock_t start_time, end_time;
@@ -51,6 +53,7 @@ int main(int arg_count, char* arg_values[]) {
 	printf("\n");
 
 	WAVHeader_struct file_header;
+	
 	FILE *wav_file = fopen(arg_values[1], "rb");
 	if (!wav_file) {
 		printf("Unable to open file %s, exiting.\n", arg_values[1]);
@@ -85,19 +88,19 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKQuadDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 1000, \
-		/* high cut freq */ 2400, \
-		/* output filter cutoff freq */ 800, \
-		/* equalizer span */ cma_span, \
-		/* equalizer gain mu */ cma_mu \
+		/* low cut freq */ 800, \
+		/* high cut freq */ 2500, \
+		/* output filter cutoff freq */ 1100, \
+		/* equalizer span */ 1, \
+		/* equalizer gain mu */ 0 \
 	);
 	AFSKQuadDemod_struct AFSKQuadDemodulator2;
 	InitAFSKQuad( \
 		logfile, \
 		&AFSKQuadDemodulator2, \
 		file_header.SampleRate, \
-		/* low cut freq */ 1000, \
-		/* high cut freq */ 2400, \
+		/* low cut freq */ 800, \
+		/* high cut freq */ 2500, \
 		/* output filter cutoff freq */ 800, \
 		/* equalizer span */ cma_span, \
 		/* equalizer gain mu */ cma_mu \
@@ -108,11 +111,11 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKPLLDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 900, \
+		/* low cut freq */ 800, \
 		/* high cut freq */ 2500, \
 		/* pll set freq */ 1700, \
-		/* pll loop cutoff */ 3800, \
-		/* pll_p_gain */5000, \
+		/* pll loop cutoff */ /*3800*/3000, \
+		/* pll_p_gain */9500, \
 		/* pll_i_gain */ 0, \
 		/* pll_i_limit */ 50, \
 		/* output filter cutoff freq */ 1100, \
@@ -124,11 +127,11 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKPLLDemodulator2, \
 		file_header.SampleRate, \
-		/* low cut freq */ 900, \
+		/* low cut freq */ 800, \
 		/* high cut freq */ 2500, \
 		/* pll set freq */ 1700, \
-		/* pll loop cutoff */ 3800, \
-		/* pll_p_gain */5000, \
+		/* pll loop cutoff */ 3000, \
+		/* pll_p_gain */9500, \
 		/* pll_i_gain */ 0, \
 		/* pll_i_limit */ 50, \
 		/* output filter cutoff freq */ 1100, \
@@ -141,24 +144,24 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 1000, \
-		/* high cut freq */ 2600, \
-		/* tone 1 freq */ 1200, \
-		/* tone 2 freq */ 2200, \
+		/* low cut freq */ 800, \
+		/* high cut freq */ 2500, \
+		/* tone 1 freq */ 1600, \
+		/* tone 2 freq */ 1800, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1100, \
-		/* equalizer span */ cma_span, \
-		/* equalizer gain mu */ cma_mu \
+		/* equalizer span */ 1, \
+		/* equalizer gain mu */ 0 \
 	);
 	AFSKDemod_struct AFSKDemodulator2;
 	InitAFSK( \
 		logfile, \
 		&AFSKDemodulator2, \
 		file_header.SampleRate, \
-		/* low cut freq */ 1000, \
-		/* high cut freq */ 2600, \
-		/* tone 1 freq */ 1200, \
-		/* tone 2 freq */ 2200, \
+		/* low cut freq */ 800, \
+		/* high cut freq */ 2500, \
+		/* tone 1 freq */ 1600, \
+		/* tone 2 freq */ 1800, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ cma_span, \
@@ -212,15 +215,17 @@ int main(int arg_count, char* arg_values[]) {
 	InitAX25(&AX25_Receiver2);
 	AX25_Receiver2.ID = 2;
 
-	FILE *output_file = fopen("./output.wav", "wb");
-	// Make this a stereo wav file.
-	file_header.ChannelCount = 2;
-	file_header.BlockSize = 16;
-	file_header.BytesPerBlock = 2 * 16 / 8;
-	file_header.BytesPerSec = file_header.SampleRate * 2 * 16 / 8;
-	file_header.DataSize = (file_header.DataSize + AFSKDemodulator1.SampleDelay) * 2;
-	fwrite(&file_header, 1, 44, output_file);
-	
+	FILE *output_file = NULL;
+	if (WRITE_WAV_OUT) {
+		output_file = fopen("./output.wav", "wb");
+		// Make this a stereo wav file.
+		file_header.ChannelCount = 2;
+		file_header.BlockSize = 16;
+		file_header.BytesPerBlock = 2 * 16 / 8;
+		file_header.BytesPerSec = file_header.SampleRate * 2 * 16 / 8;
+		file_header.DataSize = (file_header.DataSize + AFSKDemodulator1.SampleDelay) * 2;
+		fwrite(&file_header, 1, 44, output_file);
+	}
 	fseek(wav_file, 44, SEEK_SET);
 	count = fread(&buffer1, 2, READ_SIZE, wav_file);
 
@@ -274,10 +279,14 @@ int main(int arg_count, char* arg_values[]) {
 
 
 		}
-
-		// Interleave the data for Stereo wav file.
-		interleave_count = InterleaveInt16(buffer3, buffer1, buffer2, count);
-		fwrite(&buffer3, 2, interleave_count, output_file);
+		
+		
+		if (WRITE_WAV_OUT) {
+			// Interleave the data for Stereo wav file.
+			interleave_count = InterleaveInt16(buffer3, buffer1, buffer2, count);
+			fwrite(&buffer3, 2, interleave_count, output_file);
+		}
+		
 		count = fread(&buffer1, 2, AFSKDemodulator1.SampleDelay, wav_file);
 		if ((count < 1) && (flushed == 0)) {
 			flushed = 1;
@@ -294,7 +303,9 @@ int main(int arg_count, char* arg_values[]) {
 	printf("Unique count: %d\n", AX25_Receiver1.UniquePacketCount + AX25_Receiver2.UniquePacketCount);
 	
 	fclose(output_file);
-	fclose(wav_file);
+	if (WRITE_WAV_OUT) {
+		fclose(wav_file);
+	}
 	fclose(logfile);
 	
 	FILE *output_data_file = fopen(arg_values[5], "a");

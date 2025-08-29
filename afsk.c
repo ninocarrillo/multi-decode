@@ -69,7 +69,8 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	// Apply the space correlator.
 	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
 
-	result = (mark*mark) - (space*space);
+	//result = (mark*mark) - (space*space);
+	result = cabs(mark) - cabs(space);
 	//result = mark - space;
 
 	// Place result in buffer.
@@ -302,10 +303,9 @@ float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int 
 		result = CMAEqFeedback(&demod->EQ, result, 2);
 		//result = CMAEqFeedbackNorm(&demod->EQ, result, 1);
 	} else {
+		//ResetCMATaps(&demod->EQ);
 		result = CMAEq(&demod->EQ, result);
 	}
-
-	result = creal(result);
 	// Apply AGC
 	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, result);
 	if (envelope != 0) {
