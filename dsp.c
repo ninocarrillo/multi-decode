@@ -343,7 +343,7 @@ void GenLowPassFIR(FIR_struct *filter, float cutoff_freq, float sample_rate, int
 	filter->Gain = 0;
 	for (i = 0; i < tap_count; i++) {
 		// Calculate the discrete time impulse response of the filter. 
-		filter->Taps[i] = cutoff_freq * sinc(cutoff_freq * t);
+		filter->Taps[i] = sinc(cutoff_freq * t);
 		// Apply a Hann window to the filter.
 		filter->Taps[i] *= pow(sin(M_PI * i / (tap_count - 1)), 2);
 		// Sum the gain of the filter.
