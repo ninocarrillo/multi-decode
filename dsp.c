@@ -338,7 +338,7 @@ void GenLowPassFIR(FIR_struct *filter, float cutoff_freq, float sample_rate, int
 	cutoff_freq = (2 * M_PI * cutoff_freq);
 	float step_size = 1 / sample_rate;
 	// Calculate the starting value for time t.
-	float t = -(step_size * (tap_count - 1) / 2);
+	float t = -(step_size * (tap_count / 2));
 	int i;
 	filter->Gain = 0;
 	for (i = 0; i < tap_count; i++) {
@@ -366,13 +366,6 @@ void GenLowPassFIR(FIR_struct *filter, float cutoff_freq, float sample_rate, int
 }
 
 void GenHighPassFIR(FIR_struct *filter, float cutoff_freq, float sample_rate, int tap_count) {
-	// Check tap_count is odd, make odd if not.
-	if (tap_count % 2) {
-		// This is ok, do nothing.
-	} else {
-		// tap_count is even, add one to make odd.
-		tap_count++;
-	}
 	// Start with a low pass filter.
 	GenLowPassFIR(filter, cutoff_freq, sample_rate, tap_count);
 	// Invert the taps.
@@ -381,7 +374,7 @@ void GenHighPassFIR(FIR_struct *filter, float cutoff_freq, float sample_rate, in
 		filter->Taps[i] = -filter->Taps[i];
 	}
 	// Add normalized gain to the center tap.
-	filter->Taps[(tap_count - 1) / 2] += filter->Gain;
+	filter->Taps[tap_count / 2] += filter->Gain;
 }
 
 void CombineFIR(FIR_struct *f, FIR_struct *g) {
