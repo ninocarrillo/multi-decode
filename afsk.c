@@ -54,8 +54,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		result = CMAEqFeedback(&demod->EQ, result, 2);
-		//result = CMAEqFeedbackNorm(&demod->EQ, result, 1);
+		result = CMAEqFeedback(&demod->EQ, result, 1);
 	} else {
 		result = CMAEq(&demod->EQ, result);
 	}
@@ -69,18 +68,9 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	// Apply the space correlator.
 	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
 
-	//result = (mark*mark) - (space*space);
-	result = cabs(mark) - cabs(space);
-	//result = mark - space;
+	result = mark - space;
 
-	// Place result in buffer.
-	PutCB(&demod->Buffer4, creal(1024 * result));
-
-	// Apply output filter.
-	//result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
-	result = 1024 * result;
-
-	return creal(result);
+	return result*4096;
 }
 
 void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut, int cma_span, float cma_mu) {
@@ -124,7 +114,6 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}
 
 	InitCMAEqualizer(&demod->EQ, cma_span, cma_mu);
-	//InitCMAEqualizer(&demod->EQ, 9, mu);
 	LogNewline(logfile);
 	LogString(logfile, "CMA Equalizer tap count: ");
 	LogInt(logfile, demod->EQ.Filter.TapCount);
@@ -172,31 +161,17 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
-	// Create the output Lowpass filter spanning 5 symbols.
-	int output_tap_count = 5 * sample_rate / symbol_rate;
-	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
-	LogNewline(logfile);
-	LogString(logfile, "Output filter tap count: ");
-	LogInt(logfile, demod->OutputFilter.TapCount);
-	LogNewline(logfile);
-	LogString(logfile, "Taps: ");
-	for (int i = 0; i < demod->OutputFilter.TapCount; i++) {
-		LogFloat(logfile, demod->OutputFilter.Taps[i]);
-		LogString(logfile, ",");
-	}
 
 	// Initialize buffers.
 	InitCB(&demod->Buffer1, demod->InputFilter.TapCount);
 	InitCB(&demod->Buffer2, demod->HilbertFilter.TapCount);
 	InitComplexCB(&demod->Buffer3, demod->Mark.TapCount);
-	InitCB(&demod->Buffer4, demod->OutputFilter.TapCount);
 
 	// Calculate the sample delay.
 	demod->SampleDelay = 0;
 	demod->SampleDelay += demod->InputFilter.TapCount;
 	demod->SampleDelay += demod->HilbertFilter.TapCount;
 	demod->SampleDelay += demod->Mark.TapCount;
-	demod->SampleDelay += demod->OutputFilter.TapCount;
 
 }
 void InitAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float pll_set_freq, float pll_loop_cutoff, float pll_p_gain, float pll_i_gain, float pll_i_limit, float output_cut, int cma_span, float cma_mu) {
@@ -300,7 +275,7 @@ float DemodAFSKPLL(FILE *logfile, AFSKPLLDemod_struct *demod, float sample, int 
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		result = CMAEqFeedback(&demod->EQ, result, 2);
+		result = CMAEqFeedback(&demod->EQ, result, 1);
 		//result = CMAEqFeedbackNorm(&demod->EQ, result, 1);
 	} else {
 		//ResetCMATaps(&demod->EQ);
@@ -423,7 +398,7 @@ float DemodAFSKQuad(FILE *logfile, AFSKQuadDemod_struct *demod, float sample, in
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		complex_signal = CMAEqFeedback(&demod->EQ, complex_signal, 2);
+		complex_signal = CMAEqFeedback(&demod->EQ, complex_signal, 1);
 	} else {
 		complex_signal = CMAEq(&demod->EQ, complex_signal);
 	}

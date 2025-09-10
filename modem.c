@@ -82,14 +82,16 @@ int main(int arg_count, char* arg_values[]) {
 	float pll_p_gain = atof(arg_values[3]);
 	int decoder_type = atoi(arg_values[4]);
 	
+	float low_cut = 800;
+	float high_cut = 2500;
 
 	AFSKQuadDemod_struct AFSKQuadDemodulator1;
 	InitAFSKQuad( \
 		logfile, \
 		&AFSKQuadDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 800, \
-		/* high cut freq */ 2500, \
+		/* low cut freq */ low_cut, \
+		/* high cut freq */ high_cut, \
 		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ 1, \
 		/* equalizer gain mu */ 0 \
@@ -99,9 +101,9 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKQuadDemodulator2, \
 		file_header.SampleRate, \
-		/* low cut freq */ 800, \
-		/* high cut freq */ 2500, \
-		/* output filter cutoff freq */ 800, \
+		/* low cut freq */ low_cut, \
+		/* high cut freq */ high_cut, \
+		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ cma_span, \
 		/* equalizer gain mu */ cma_mu \
 	);
@@ -111,8 +113,8 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKPLLDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 800, \
-		/* high cut freq */ 2500, \
+		/* low cut freq */ low_cut, \
+		/* high cut freq */ high_cut, \
 		/* pll set freq */ 1700, \
 		/* pll loop cutoff */ /*3800*/3000, \
 		/* pll_p_gain */9500, \
@@ -127,8 +129,8 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKPLLDemodulator2, \
 		file_header.SampleRate, \
-		/* low cut freq */ 800, \
-		/* high cut freq */ 2500, \
+		/* low cut freq */ low_cut, \
+		/* high cut freq */ high_cut, \
 		/* pll set freq */ 1700, \
 		/* pll loop cutoff */ 3000, \
 		/* pll_p_gain */9500, \
@@ -139,15 +141,19 @@ int main(int arg_count, char* arg_values[]) {
 		/* equalizer gain mu */ cma_mu \
 	);	
 	
+	float center_tone = 1700;
+	float tone_1 = center_tone - 250;
+	float tone_2 = center_tone + 250;
+
 	AFSKDemod_struct AFSKDemodulator1;
 	InitAFSK( \
 		logfile, \
 		&AFSKDemodulator1, \
 		file_header.SampleRate, \
-		/* low cut freq */ 800, \
-		/* high cut freq */ 2500, \
-		/* tone 1 freq */ 1600, \
-		/* tone 2 freq */ 1800, \
+		/* low cut freq */ low_cut, \
+		/* high cut freq */ high_cut, \
+		/* tone 1 freq */ tone_1, \
+		/* tone 2 freq */ tone_2, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ 1, \
@@ -158,10 +164,10 @@ int main(int arg_count, char* arg_values[]) {
 		logfile, \
 		&AFSKDemodulator2, \
 		file_header.SampleRate, \
-		/* low cut freq */ 800, \
-		/* high cut freq */ 2500, \
-		/* tone 1 freq */ 1600, \
-		/* tone 2 freq */ 1800, \
+		/* low cut freq */ low_cut, \
+		/* high cut freq */ high_cut, \
+		/* tone 1 freq */ tone_1, \
+		/* tone 2 freq */ tone_2, \
 		/* symbol rate */ 1200, \
 		/* output filter cutoff freq */ 1100, \
 		/* equalizer span */ cma_span, \
