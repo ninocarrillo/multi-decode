@@ -181,67 +181,28 @@ void CMAFeedback(CMA_Equalizer_struct *eq) {
 }
 
 int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_count) {
-	if (tap_count % 2) {
-		// tap_count is odd, this is good.
-	} else {
-		// make tap_count odd.
-		tap_count++;
-	}
-	
 	// Calculate the Hilbert and Half-band filter taps
-	int N = tap_count - 1;
-	int delay;
-	int n, i = 0;
-	delay = tap_count / 2;
-	for (n = -delay; n < (tap_count - delay); n++) {
+	int n = -tap_count / 2;
+	for (int i = 0; i < tap_count; i++) {
 		if (n % 2) {
-			// n is odd
 			hilbert_filter->Taps[i] = 2 / (M_PI * n);
 		} else {
-			// n is even
 			hilbert_filter->Taps[i] = 0;
 		}
-		if (n == 0) {
-			delay_filter->Taps[i] = 1;
-		} else {
-			delay_filter->Taps[i] = sin(n * M_PI / 2) / (n * M_PI);
-		}
-		i++;
-	}
-	hilbert_filter->TapCount = i;
-	delay_filter->TapCount = i;
+		delay_filter->Taps[i] = 0;
+		n++;
+	}		
+
+	int delay = (tap_count - 1) / 2;
+	delay_filter->Taps[tap_count / 2] = 1;
 	
 	// Apply a Hann window to the filters.
-	for (i = 0; i < tap_count; i++) {
-		float window = pow(sin(M_PI * i / N), 2);
+	for (int i = 0; i < tap_count; i++) {
+		float window = pow(sin(M_PI * i / (tap_count - 1)), 2);
 		hilbert_filter->Taps[i] *= window;
-		delay_filter->Taps[i] *= window;
 	}
-
-
-	// Calculate the passband gain of the half band filter (sum of the positive taps)
-	delay_filter->Gain = 0;
-	for (i = 0; i < tap_count; i++) {
-		delay_filter->Gain += delay_filter->Taps[i];
-	}
-	
-	// Normalize the gain of both filters.
-	for (i = 0; i < tap_count; i++) {
-			hilbert_filter->Taps[i] *= (1.5/delay_filter->Gain);
-			delay_filter->Taps[i] *= (1/delay_filter->Gain);
-	}
-	delay_filter->Gain = 0;
-	for (i = 0; i < tap_count; i++) {
-		delay_filter->Gain += delay_filter->Taps[i];
-	}
-	hilbert_filter->Gain = delay_filter->Gain; 	
-
-	// for (i = 0; i < tap_count; i++) {
-	// 	delay_filter->Taps[i] = 0;
-	// }
-	// delay_filter->Taps[delay] = 1;
-
-	delay++;
+	hilbert_filter->TapCount = tap_count;
+	delay_filter->TapCount = tap_count;
 	return delay;
 }
 
