@@ -92,7 +92,7 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 	}
 
 	// Create a Hilbert transform filter.
-	int hilbert_tap_count = 0.00125 * sample_rate;
+	int hilbert_tap_count = 0.005 * sample_rate;
 	InitHilbert(&demod->HilbertFilter, &demod->DelayFilter, hilbert_tap_count);
 	LogNewline(logfile);
 	LogString(logfile, "Hilbert tap count: ");
