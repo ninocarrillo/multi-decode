@@ -188,6 +188,19 @@ int main(int arg_count, char* arg_values[]) {
 		/* symbol rate */ 1200, \
 		/* feedback parameter */ 0.75 \
 	);
+
+	Gardner_TED_struct Gardner1;
+	Gardner_TED_struct Gardner2;
+	InitGardnerLinear( \
+		&Gardner1, \
+		file_header.SampleRate,
+		1200 \
+	); 
+	InitGardnerLinear( \
+		&Gardner2, \
+		file_header.SampleRate, \
+		1200 \
+	); 
 	
 	Data_Slicer_struct NSlicer1;
 	InitSliceN( \
@@ -253,7 +266,8 @@ int main(int arg_count, char* arg_values[]) {
 			} else if (decoder_type == 3) {
 				buffer1[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
 			}
-			data = Slice2(&Slicer1, buffer1[i]);
+			//data = Slice2(&Slicer1, buffer1[i]);
+			data = GardnerLinear(&Gardner1, buffer1[i]);
 			if (data > 0) {
 				data = Unscramble(&LFSR1, data, Slicer1.AccumulatorBitWidth, Slicer1.AccumulatorBitWidth);
 				AX25Receive(logfile, &AX25_Receiver1, data, Slicer1.AccumulatorBitWidth, AX25_Receiver2.CRC);

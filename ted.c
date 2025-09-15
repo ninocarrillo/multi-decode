@@ -15,6 +15,15 @@ void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate
 	slicer->DataAccumulator = 0;
 }
 
+void InitGardnerLinear(Gardner_TED_struct *ted, float sample_rate, float symbol_rate) {
+    ted->Decimation = sample_rate / (2 * symbol_rate);
+    ted->DCDLoad = sample_rate / 20;
+    ted->SyncDCD = 0;
+    ted->MatchDCD = 0;
+    ted->AccumulatorBitWidth = (sizeof(long int) * CHAR_BIT) - 1;
+    ted->DataAccumulator = 0;
+}
+
 void InitSliceN(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate, float lock_rate, int bits_per_sym) {
     slicer->DCDLoad = 32;
     slicer->ClockStep = symbol_rate / sample_rate;
@@ -119,19 +128,53 @@ long int Slice2(Data_Slicer_struct *slicer, float sample) {
             slicer->MatchDCD = slicer->DCDLoad;
         }
     }
-	//if (ZDetect(slicer->LastSample, sample)) {
-	//	slicer->Clock *= slicer->LockRate;
-	//}
 	if (ZDetect(slicer->LastSample, sample)) {
-		// Clock should be zero.
-		// If clock is negative, it's running slow.
-		// If it's positive, it's running fast.
-			slicer->ClockStep = slicer->ClockStep + (slicer->Clock * 0.0000001);
-
+		slicer->Clock *= slicer->LockRate;
 	}
 	slicer->LastSample = sample;
     return result;
 }
+
+
+long int GardnerLinear(Gardner_TED_struct *ted, float sample) {
+    // Assumes 2 samples per symbol.
+    long int result = -1;
+    ted->DecimationIndex++;
+    if (ted->DecimationIndex >= ted->Decimation) {
+        ted->DecimationIndex = 0;
+    
+        ted->Timer ^= 1;
+        if (ted->Timer) {
+            ted->DataAccumulator <<= 1;
+            ted->BitIndex++;
+            // Interpolate between the two points
+            if ((ted->LastSample + sample) / 2 > 0) {
+                ted->DataAccumulator |= 1;
+            }
+            if (ted->BitIndex >= ted->AccumulatorBitWidth) {
+                ted->BitIndex = 0;
+                result = ted->DataAccumulator;
+                ted->DataAccumulator = 0;
+            }
+            ted->MatchDCD--;
+            if (ted->MatchDCD < 0) {
+                ted->MatchDCD = -1;
+            }
+            if ((ted->DataAccumulator & 0xFFFFFF) == 0x808080) {
+                ted->MatchDCD = ted->DCDLoad;
+            }
+            if ((ted->DataAccumulator & 0xFFFFFF) == 0x7F7F7F) {
+                ted->MatchDCD = ted->DCDLoad;
+            }
+            if ((ted->DataAccumulator & 0xFFFFFF) == 0x555555) {
+                ted->MatchDCD = ted->DCDLoad;
+            }
+        } 
+    }
+    ted->LastSample = sample;
+    return result;
+}
+
 
 long int SliceN(Data_Slicer_struct *slicer, float sample) {
     long int result = -1;
