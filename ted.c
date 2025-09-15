@@ -119,8 +119,15 @@ long int Slice2(Data_Slicer_struct *slicer, float sample) {
             slicer->MatchDCD = slicer->DCDLoad;
         }
     }
+	//if (ZDetect(slicer->LastSample, sample)) {
+	//	slicer->Clock *= slicer->LockRate;
+	//}
 	if (ZDetect(slicer->LastSample, sample)) {
-		slicer->Clock *= slicer->LockRate;
+		// Clock should be zero.
+		// If clock is negative, it's running slow.
+		// If it's positive, it's running fast.
+			slicer->ClockStep = slicer->ClockStep + (slicer->Clock * 0.0000001);
+
 	}
 	slicer->LastSample = sample;
     return result;
