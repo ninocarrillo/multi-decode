@@ -23,7 +23,9 @@ typedef struct {
 } Data_Slicer_struct;
 
 typedef struct {
-    float LastSample;
+    float TimingError;
+    float SampleB;
+    float SampleC;
     long int DataAccumulator;
     int BitIndex;
     int AccumulatorBitWidth;

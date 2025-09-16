@@ -137,18 +137,18 @@ long int Slice2(Data_Slicer_struct *slicer, float sample) {
 
 
 long int GardnerLinear(Gardner_TED_struct *ted, float sample) {
-    // Assumes 2 samples per symbol.
     long int result = -1;
     ted->DecimationIndex++;
+    // Decimate down to 2 samples per symbol
     if (ted->DecimationIndex >= ted->Decimation) {
         ted->DecimationIndex = 0;
-    
+        //  Downsample 2:1
         ted->Timer ^= 1;
         if (ted->Timer) {
             ted->DataAccumulator <<= 1;
             ted->BitIndex++;
             // Interpolate between the two points
-            if ((ted->LastSample + sample) / 2 > 0) {
+            if ((ted->SampleB + sample) / 2 > 0) {
                 ted->DataAccumulator |= 1;
             }
             if (ted->BitIndex >= ted->AccumulatorBitWidth) {
@@ -171,7 +171,8 @@ long int GardnerLinear(Gardner_TED_struct *ted, float sample) {
             }
         } 
     }
-    ted->LastSample = sample;
+    ted->SampleC = ted->SampleB;
+    ted->SampleB = sample;
     return result;
 }
 
