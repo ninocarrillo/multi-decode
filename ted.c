@@ -22,6 +22,8 @@ void InitGardnerLinear(Gardner_TED_struct *ted, float sample_rate, float symbol_
     ted->MatchDCD = 0;
     ted->AccumulatorBitWidth = (sizeof(long int) * CHAR_BIT) - 1;
     ted->DataAccumulator = 0;
+    ted->RegeneratedClock = -0.5;
+    ted->RegeneratedClockRate = 1.0;
 }
 
 void InitSliceN(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate, float lock_rate, int bits_per_sym) {
@@ -142,13 +144,16 @@ long int GardnerLinear(Gardner_TED_struct *ted, float sample) {
     // Decimate down to 2 samples per symbol
     if (ted->DecimationIndex >= ted->Decimation) {
         ted->DecimationIndex = 0;
-        //  Downsample 2:1
-        ted->Timer ^= 1;
-        if (ted->Timer) {
+        //  
+        ted->RegeneratedClock += ted->RegeneratedClockRate;
+        if (ted->RegeneratedClock >= 1.0) {
+            ted->RegeneratedClock -= 2.0;
+        }
+        if (ted->RegeneratedClock > 0.0) {
             ted->DataAccumulator <<= 1;
             ted->BitIndex++;
             // Interpolate between the two points
-            if ((ted->SampleB + sample) / 2 > 0) {
+            if ((ted->SampleB * ted->RegeneratedClock) + (sample * (1.0 - ted->RegeneratedClock)) > 0) {
                 ted->DataAccumulator |= 1;
             }
             if (ted->BitIndex >= ted->AccumulatorBitWidth) {

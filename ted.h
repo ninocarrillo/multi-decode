@@ -34,6 +34,8 @@ typedef struct {
     int Decimation;
     int DecimationIndex;
     int DCDLoad;
+    float RegeneratedClock;
+    float RegeneratedClockRate;
     unsigned Timer :1;
 } Gardner_TED_struct;
 
