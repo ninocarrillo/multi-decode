@@ -194,12 +194,14 @@ int main(int arg_count, char* arg_values[]) {
 	InitGardnerLinear( \
 		&Gardner1, \
 		file_header.SampleRate,
-		1200 \
+		1200, \
+		100 \
 	); 
 	InitGardnerLinear( \
 		&Gardner2, \
 		file_header.SampleRate, \
-		1200 \
+		1200, \
+		50 \
 	); 
 	
 	Data_Slicer_struct NSlicer1;

@@ -15,15 +15,18 @@ void InitSlice2(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate
 	slicer->DataAccumulator = 0;
 }
 
-void InitGardnerLinear(Gardner_TED_struct *ted, float sample_rate, float symbol_rate) {
-    ted->Decimation = sample_rate / (2 * symbol_rate);
-    ted->DCDLoad = sample_rate / 20;
-    ted->SyncDCD = 0;
-    ted->MatchDCD = 0;
-    ted->AccumulatorBitWidth = (sizeof(long int) * CHAR_BIT) - 1;
+void InitGardnerLinear(Gardner_TED_struct *ted, int sample_rate, int symbol_rate, float loop_filter_cutoff) {
+	InitIIROrder1(&ted->LoopFilter, sample_rate, loop_filter_cutoff);
+	ted->AccumulatorBitWidth = (sizeof(long int) * CHAR_BIT) - 1;
     ted->DataAccumulator = 0;
-    ted->RegeneratedClock = -0.5;
-    ted->RegeneratedClockRate = 1.0;
+	ted->Oversample = sample_rate / symbol_rate;
+	ted->SampleFractionalTarget = 0.5; /* constrain 0.0 to 1.0 */
+	ted->SampleBaseTarget = ted->Oversample - 1; /* constrain 0 to oversample - 1 */
+	ted->ZeroBaseTarget = ted->SampleBaseTarget - (ted->Oversample / 2); /* constrain 0 to oversample - 1 */
+	ted->SampleIndex = 0; /* free-running counter incremented once per sample */
+	/* Constrain SampleIndex from 0 to oversample - 1 */
+	ted->BitIndex = 0;
+
 }
 
 void InitSliceN(Data_Slicer_struct *slicer, float sample_rate, float symbol_rate, float lock_rate, int bits_per_sym) {
@@ -57,48 +60,6 @@ int ZDetect(float old_y, float new_y) {
         }
     }
     return crossed;
-}
-
-long int Slice2Eq(Data_Slicer_struct *slicer, CMA_Equalizer_struct *eq, float sample) {
-    long int result = -1;
-    slicer->Clock += slicer->ClockStep;
-    if (slicer->Clock > 0.5) {
-        slicer->Clock -= 1;
-        slicer->DataAccumulator <<= 1;
-        slicer->BitIndex++;
-        if (sample > 0) {
-            slicer->DataAccumulator |= 1;
-        }
-        if (slicer->BitIndex >= slicer->AccumulatorBitWidth) {
-            slicer->BitIndex = 0;
-            result = slicer->DataAccumulator;
-            slicer->DataAccumulator = 0;
-        }
-        slicer->MatchDCD--;
-        if (slicer->MatchDCD < 0) {
-            slicer->MatchDCD = -1;
-        } 
-
-        if ((slicer->DataAccumulator & 0xFFFFFF) == 0x808080) {
-            slicer->MatchDCD = slicer->DCDLoad;
-        }
-        if ((slicer->DataAccumulator & 0xFFFFFF) == 0x7F7F7F) {
-            slicer->MatchDCD = slicer->DCDLoad;
-        }
-        if ((slicer->DataAccumulator & 0xFFFFFF) == 0x555555) {
-            slicer->MatchDCD = slicer->DCDLoad;
-        }
-
-        if (slicer->MatchDCD > 0) {
-            // Apply equalizer feedback
-            CMAFeedback(eq);
-        }
-    }
-    if (ZDetect(slicer->LastSample, sample)) {
-        slicer->Clock *= slicer->LockRate;
-    }
-    slicer->LastSample = sample;
-    return result;
 }
 
 long int Slice2(Data_Slicer_struct *slicer, float sample) {
@@ -138,46 +99,60 @@ long int Slice2(Data_Slicer_struct *slicer, float sample) {
 }
 
 
-long int GardnerLinear(Gardner_TED_struct *ted, float sample) {
+long int GardnerLinear(Gardner_TED_struct *ted, float S0) {
     long int result = -1;
-    ted->DecimationIndex++;
-    // Decimate down to 2 samples per symbol
-    if (ted->DecimationIndex >= ted->Decimation) {
-        ted->DecimationIndex = 0;
-        //  
-        ted->RegeneratedClock += ted->RegeneratedClockRate;
-        if (ted->RegeneratedClock >= 1.0) {
-            ted->RegeneratedClock -= 2.0;
+
+	/* Interpolate */
+	float I0 = (ted->SampleFractionalTarget * S0) + ((1-ted->SampleFractionalTarget) * ted->S1);
+	ted->S1 = S0;
+	
+	ted->SampleIndex++;
+	if (ted->SampleIndex >= ted->Oversample) {
+		ted->SampleIndex = 0;
+	}
+	if (ted->SampleIndex == ted->SampleBaseTarget) {
+		/* Save data */
+        ted->DataAccumulator <<= 1;
+        ted->BitIndex++;
+        if (I0 > 0) {
+            ted->DataAccumulator |= 1;
         }
-        if (ted->RegeneratedClock > 0.0) {
-            ted->DataAccumulator <<= 1;
-            ted->BitIndex++;
-            // Interpolate between the two points
-            if ((ted->SampleB * ted->RegeneratedClock) + (sample * (1.0 - ted->RegeneratedClock)) > 0) {
-                ted->DataAccumulator |= 1;
-            }
-            if (ted->BitIndex >= ted->AccumulatorBitWidth) {
-                ted->BitIndex = 0;
-                result = ted->DataAccumulator;
-                ted->DataAccumulator = 0;
-            }
-            ted->MatchDCD--;
-            if (ted->MatchDCD < 0) {
-                ted->MatchDCD = -1;
-            }
-            if ((ted->DataAccumulator & 0xFFFFFF) == 0x808080) {
-                ted->MatchDCD = ted->DCDLoad;
-            }
-            if ((ted->DataAccumulator & 0xFFFFFF) == 0x7F7F7F) {
-                ted->MatchDCD = ted->DCDLoad;
-            }
-            if ((ted->DataAccumulator & 0xFFFFFF) == 0x555555) {
-                ted->MatchDCD = ted->DCDLoad;
-            }
-        } 
-    }
-    ted->SampleC = ted->SampleB;
-    ted->SampleB = sample;
+        if (ted->BitIndex >= ted->AccumulatorBitWidth) {
+            ted->BitIndex = 0;
+            result = ted->DataAccumulator;
+			ted->DataAccumulator = 0;
+        }
+	}
+
+	if (ted->SampleIndex == ted->ZeroBaseTarget) {
+		/* Apply Gerdner's equation */
+		float error = ted->I1 * (I0 - ted->I2);
+		/* Filter error value */
+		float feedback = UpdateIIROrder1(&ted->LoopFilter, error);
+		/* Apply feedback to SampleTarget */
+		ted->SampleFractionalTarget -= (feedback * 0.17/32768);
+		while (ted->SampleFractionalTarget < 0.0) {
+			ted->SampleBaseTarget -= 1;
+			ted->SampleFractionalTarget += 1.0;
+		}
+		while (ted->SampleFractionalTarget > 1.0) {
+			ted->SampleBaseTarget += 1;
+			ted->SampleFractionalTarget -= 1.0;
+		}
+		while (ted->SampleBaseTarget < 0) {
+			ted->SampleBaseTarget += ted->Oversample;
+		}
+		while (ted->SampleBaseTarget >= ted->Oversample) {
+			ted->SampleBaseTarget -= ted->Oversample;
+		}
+		ted->ZeroBaseTarget = ted->SampleBaseTarget - (ted->Oversample / 2);
+		while (ted->ZeroBaseTarget < 0) {
+			ted->ZeroBaseTarget += ted->Oversample;
+		}
+	}
+	/* update interpolated sample history */
+	ted->I2 = ted->I1;
+	ted->I1 = I0;
     return result;
 }
 
