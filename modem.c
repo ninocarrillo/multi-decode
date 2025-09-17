@@ -201,7 +201,7 @@ int main(int arg_count, char* arg_values[]) {
 		&Gardner2, \
 		file_header.SampleRate, \
 		1200, \
-		50 \
+		100 \
 	); 
 	
 	Data_Slicer_struct NSlicer1;
@@ -262,17 +262,17 @@ int main(int arg_count, char* arg_values[]) {
 		for (int i = 0; i < count; i++) {
 			float input_sample = (float)buffer1[i];
 			if (decoder_type == 1) {
-				buffer1[i] = DemodAFSK(logfile, &AFSKDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
+				buffer1[i] = DemodAFSK(logfile, &AFSKDemodulator1, input_sample / (float)65536, Gardner1.MatchDCD);
 			} else if (decoder_type == 2) {
-				buffer1[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
+				buffer1[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator1, input_sample / (float)65536, Gardner1.MatchDCD);
 			} else if (decoder_type == 3) {
-				buffer1[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator1, input_sample / (float)65536, Slicer1.MatchDCD);
+				buffer1[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator1, input_sample / (float)65536, Gardner1.MatchDCD);
 			}
 			//data = Slice2(&Slicer1, buffer1[i]);
 			data = GardnerLinear(&Gardner1, buffer1[i]);
 			if (data > 0) {
-				data = Unscramble(&LFSR1, data, Slicer1.AccumulatorBitWidth, Slicer1.AccumulatorBitWidth);
-				AX25Receive(logfile, &AX25_Receiver1, data, Slicer1.AccumulatorBitWidth, AX25_Receiver2.CRC);
+				data = Unscramble(&LFSR1, data, Gardner1.AccumulatorBitWidth, Gardner1.AccumulatorBitWidth);
+				AX25Receive(logfile, &AX25_Receiver1, data, Gardner1.AccumulatorBitWidth, AX25_Receiver2.CRC);
 				if (AX25_Receiver1.CRC == AX25_Receiver2.CRC) {
 					AX25_Receiver2.CRC = -1;
 					AX25_Receiver1.CRC = -1;
@@ -281,16 +281,16 @@ int main(int arg_count, char* arg_values[]) {
 
 
 			if (decoder_type == 1) {
-				buffer2[i] = DemodAFSK(logfile, &AFSKDemodulator2, input_sample / (float)65536, Slicer2.MatchDCD);
+				buffer2[i] = DemodAFSK(logfile, &AFSKDemodulator2, input_sample / (float)65536, Gardner2.MatchDCD);
 			} else if (decoder_type == 2) {
-				buffer2[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator2, input_sample / (float)65536, Slicer2.MatchDCD);
+				buffer2[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator2, input_sample / (float)65536, Gardner2.MatchDCD);
 			} else if (decoder_type == 3) {
-				buffer2[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator2, input_sample / (float)65536, Slicer2.MatchDCD);
+				buffer2[i] = DemodAFSKQuad(logfile, &AFSKQuadDemodulator2, input_sample / (float)65536, Gardner2.MatchDCD);
 			}
-			data = Slice2(&Slicer2, buffer2[i]);
+			data = GardnerLinear(&Gardner2, buffer2[i]);
 			if (data > 0) {
-				data = Unscramble(&LFSR2, data, Slicer2.AccumulatorBitWidth, Slicer2.AccumulatorBitWidth);
-				AX25Receive(logfile, &AX25_Receiver2, data, Slicer2.AccumulatorBitWidth, AX25_Receiver1.CRC);
+				data = Unscramble(&LFSR2, data, Gardner2.AccumulatorBitWidth, Gardner2.AccumulatorBitWidth);
+				AX25Receive(logfile, &AX25_Receiver2, data, Gardner2.AccumulatorBitWidth, AX25_Receiver1.CRC);
 				if (AX25_Receiver1.CRC == AX25_Receiver2.CRC) {
 					AX25_Receiver1.CRC = -1;
 					AX25_Receiver2.CRC = -1;

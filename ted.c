@@ -26,6 +26,8 @@ void InitGardnerLinear(Gardner_TED_struct *ted, int sample_rate, int symbol_rate
 	ted->SampleIndex = 0; /* free-running counter incremented once per sample */
 	/* Constrain SampleIndex from 0 to oversample - 1 */
 	ted->BitIndex = 0;
+	ted->DCDLoad = 32;
+	ted->MatchDCD = 0;
 
 }
 
@@ -122,6 +124,23 @@ long int GardnerLinear(Gardner_TED_struct *ted, float S0) {
             result = ted->DataAccumulator;
 			ted->DataAccumulator = 0;
         }
+		
+        ted->MatchDCD--;
+        if (ted->MatchDCD < 0) {
+            ted->MatchDCD = -1;
+        }
+        if ((ted->DataAccumulator & 0xFFFFFF) == 0x808080) {
+            ted->MatchDCD = ted->DCDLoad;
+        }
+        if ((ted->DataAccumulator & 0xFFFFFF) == 0x7F7F7F) {
+            ted->MatchDCD = ted->DCDLoad;
+        }
+		if ((ted->DataAccumulator & 0xFFFFFF) == 0x555555) {
+            ted->MatchDCD = ted->DCDLoad;
+        }		
+		
+		
+		
 	}
 
 	if (ted->SampleIndex == ted->ZeroBaseTarget) {

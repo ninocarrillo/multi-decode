@@ -36,6 +36,8 @@ typedef struct {
 	int SampleIndex;
 	int Oversample;
 	int BitIndex;
+	int MatchDCD;
+	int DCDLoad;
 } Gardner_TED_struct;
 
 void InitSlice2(Data_Slicer_struct *, float, float, float);
