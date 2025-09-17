@@ -44,23 +44,30 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	PutCB(&demod->Buffer1, sample);
 
 	// Apply input filter.
-	float complex result = FilterCB(&demod->Buffer1, &demod->InputFilter);
+	float result = FilterCB(&demod->Buffer1, &demod->InputFilter);
+
+
 
 	// Place filtered sample in circular buffer.
-	PutCB(&demod->Buffer2, creal(result));
+	PutCB(&demod->Buffer2, result);
 
 	// Create quadrature signal.
-	result = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
+	float complex result2 = FilterCB(&demod->Buffer2, &demod->DelayFilter) + FilterCB(&demod->Buffer2, &demod->HilbertFilter) * I;
 	
 	// Equalize.
 	if (carrier_detect > 0) {
-		result = CMAEqFeedback(&demod->EQ, result, 1);
+		result2 = CMAEqFeedback(&demod->EQ, result2, 1);
 	} else {
-		result = CMAEq(&demod->EQ, result);
+		result2 = CMAEq(&demod->EQ, result2);
 	}
-
+	
+	// Apply AGC
+	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, creal(result2));
+	if (envelope != 0) {
+		result2 = 4096 * result2 / envelope;
+	}
 	// Place quadrature signal in complex circular buffer.
-	PutComplexCB(&demod->Buffer3, result);
+	PutComplexCB(&demod->Buffer3, result2);
 
 	// Apply the mark correlator.
 	float mark = CorrelateComplexCB(&demod->Buffer3, &demod->Mark);
@@ -70,13 +77,16 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 
 	result = mark - space;
 
-	return result*4096;
+	return result;
 }
 
 void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut, int cma_span, float cma_mu) {
 	
 	LogNewline(logfile);
 	LogString(logfile, "Initializing AFSK Demodulator.");
+	
+	InitEnvelopeDetector(&demod->EnvelopeDetector, sample_rate, /*attack*/ 500, /*sustain*/ 0, /*decay*/2.5); 
+
 
 	// Create the input Bandpass filter spanning 7 milliseconds of input samples.
 	int input_tap_count = 0.007 * sample_rate;

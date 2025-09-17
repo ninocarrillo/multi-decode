@@ -28,6 +28,7 @@ void InitGardnerLinear(Gardner_TED_struct *ted, int sample_rate, int symbol_rate
 	ted->BitIndex = 0;
 	ted->DCDLoad = 32;
 	ted->MatchDCD = 0;
+	ted->Integral = 0.0;
 
 }
 
@@ -147,9 +148,10 @@ long int GardnerLinear(Gardner_TED_struct *ted, float S0) {
 		/* Apply Gerdner's equation */
 		float error = ted->I1 * (I0 - ted->I2);
 		/* Filter error value */
-		float feedback = UpdateIIROrder1(&ted->LoopFilter, error);
+		float feedback = UpdateIIROrder1(&ted->LoopFilter, error) / 4096;
 		/* Apply feedback to SampleTarget */
-		ted->SampleFractionalTarget -= (feedback * 0.17/32768);
+		float proportional = feedback * 0.002;
+		ted->SampleFractionalTarget -= (proportional);
 		while (ted->SampleFractionalTarget < 0.0) {
 			ted->SampleBaseTarget -= 1;
 			ted->SampleFractionalTarget += 1.0;

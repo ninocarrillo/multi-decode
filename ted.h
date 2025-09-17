@@ -30,6 +30,7 @@ typedef struct {
 	float I1;
 	float I2;
 	float S1;
+	float Integral;
 	int AccumulatorBitWidth;
 	int SampleBaseTarget; /* constrain 0 to oversample - 1 */
 	int ZeroBaseTarget; /* constrain 0 to oversample - 1 */
