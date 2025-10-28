@@ -100,7 +100,7 @@ float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample, int 
 	eq->PeriodCounter++;
 	if (eq->PeriodCounter >= feedback_period) {
 		eq->PeriodCounter = 0;
-		float complex error = cabs(eq->accumulator) - 1;
+		float complex error = pow(cabs(eq->accumulator),2) - 1;
 		float complex adjust = eq->accumulator * error * eq->mu;
 		int i, j;
 		j = eq->Buffer.Index+1;
