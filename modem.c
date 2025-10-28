@@ -262,7 +262,7 @@ int main(int arg_count, char* arg_values[]) {
 		for (int i = 0; i < count; i++) {
 			float input_sample = (float)buffer1[i];
 			if (decoder_type == 1) {
-				buffer1[i] = DemodAFSK(logfile, &AFSKDemodulator1, input_sample / (float)65536, Gardner1.MatchDCD);
+				buffer1[i] = DemodAFSK(logfile, &AFSKDemodulator1, input_sample, Gardner1.MatchDCD);
 			} else if (decoder_type == 2) {
 				buffer1[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator1, input_sample / (float)65536, Gardner1.MatchDCD);
 			} else if (decoder_type == 3) {
@@ -281,7 +281,7 @@ int main(int arg_count, char* arg_values[]) {
 
 
 			if (decoder_type == 1) {
-				buffer2[i] = DemodAFSK(logfile, &AFSKDemodulator2, input_sample / (float)65536, Gardner2.MatchDCD);
+				buffer2[i] = DemodAFSK(logfile, &AFSKDemodulator2, input_sample, Gardner2.MatchDCD);
 			} else if (decoder_type == 2) {
 				buffer2[i] = DemodAFSKPLL(logfile, &AFSKPLLDemodulator2, input_sample / (float)65536, Gardner2.MatchDCD);
 			} else if (decoder_type == 3) {
@@ -291,6 +291,18 @@ int main(int arg_count, char* arg_values[]) {
 			if (data > 0) {
 				data = Unscramble(&LFSR2, data, Gardner2.AccumulatorBitWidth, Gardner2.AccumulatorBitWidth);
 				AX25Receive(logfile, &AX25_Receiver2, data, Gardner2.AccumulatorBitWidth, AX25_Receiver1.CRC);
+				if (AX25_Receiver2.NewPacket == 1) {
+					AX25_Receiver2.NewPacket = 0;
+					LogNewline(logfile);
+					LogString(logfile, "CMA EQ Taps: ");
+					for (int i = 0; i < AFSKDemodulator2.EQ.Filter.TapCount; i++) {
+						LogFloat(logfile, creal(AFSKDemodulator2.EQ.Filter.Taps[i]));
+						LogString(logfile, " + ");
+						LogFloat(logfile, cimag(AFSKDemodulator2.EQ.Filter.Taps[i]));
+						LogString(logfile, "j");
+						LogString(logfile, ", ");
+					}
+				}
 				if (AX25_Receiver1.CRC == AX25_Receiver2.CRC) {
 					AX25_Receiver1.CRC = -1;
 					AX25_Receiver2.CRC = -1;

@@ -69,13 +69,6 @@ void ResetCMATaps(CMA_Equalizer_struct *eq) {
 }
 
 void InitCMAEqualizer(CMA_Equalizer_struct *eq, int tap_count, float complex mu) {
-	//if (tap_count % 2) {
-		// tap_count is odd, this is good.
-	//} else {
-		// make tap_count odd.
-	//	tap_count++;
-	//}
-
 	for (int i = 0; i < tap_count; i++) {
 		eq->Filter.Taps[i] = 0;
 		eq->Buffer.Buffer[i] = 0;
@@ -101,44 +94,6 @@ float NormComplex(ComplexCircularBuffer_struct *buffer) {
 	return result;
 }
 
-float complex CMAEqFeedbackNorm(CMA_Equalizer_struct *eq, float complex sample, int feedback_period) {
-
-	PutComplexCB(&eq->Buffer, sample);
-	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
-	eq->PeriodCounter++;
-	
-	/* Calculate mu using the normalized CMA approach by Jones */
-	float abs_y = creal(cabs(eq->accumulator));
-	float abs_y2 = abs_y * abs_y;
-	float norm_X2 = NormComplex(&eq->Buffer);
-	
-	//printf("\nnorm_X2: %f", norm_X2);
-	eq->mu = (abs_y2 - abs_y) / ((4*abs_y2*(abs_y2 - 1)*norm_X2));
-	eq->mu *= 0.3;
-	//printf("\nmu = %f", creal(eq->mu));
-	/***********************************************************/
-	
-	if (eq->PeriodCounter >= feedback_period) {
-		eq->PeriodCounter = 0;
-		float complex error = cabs(eq->accumulator) - 1;
-		float complex adjust = eq->accumulator * error * eq->mu;
-		int i, j;
-		j = eq->Buffer.Index + 1;
-		for (i = 0; i < eq->Filter.TapCount; i++) {
-			eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
-			j++;
-			if (j < 0) {
-				j += eq->Buffer.Length;
-			}
-			if (j >= eq->Buffer.Length) {
-				j = 0;
-			}
-		}
-	}
-	return eq->accumulator;
-}
-
-
 float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample, int feedback_period) {
 	PutComplexCB(&eq->Buffer, sample);
 	eq->accumulator = FilterComplexCB(&eq->Buffer, &eq->Filter);
@@ -148,36 +103,15 @@ float complex CMAEqFeedback(CMA_Equalizer_struct *eq, float complex sample, int 
 		float complex error = cabs(eq->accumulator) - 1;
 		float complex adjust = eq->accumulator * error * eq->mu;
 		int i, j;
-		j = eq->Buffer.Index + 1;
+		j = eq->Buffer.Index+1;
 		for (i = 0; i < eq->Filter.TapCount; i++) {
-			eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
-			j++;
-			if (j < 0) {
-				j += eq->Buffer.Length;
-			}
 			if (j >= eq->Buffer.Length) {
 				j = 0;
 			}
+			eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j++]);
 		}
 	}
 	return eq->accumulator;
-}
-
-void CMAFeedback(CMA_Equalizer_struct *eq) {
-	float complex error = cabs(eq->accumulator) - 1;
-	float complex adjust = eq->accumulator * error * eq->mu;
-	int i, j;
-	j = eq->Buffer.Index + 1;
-	for (i = 0; i < eq->Filter.TapCount; i++) {
-		eq->Filter.Taps[i] -= adjust * conj(eq->Buffer.Buffer[j]);
-		j++;
-		if (j < 0) {
-			j += eq->Buffer.Length;
-		}
-		if (j >= eq->Buffer.Length) {
-			j = 0;
-		}
-	}
 }
 
 int InitHilbert(FIR_struct *hilbert_filter, FIR_struct *delay_filter, int tap_count) {
@@ -415,7 +349,7 @@ float CorrelateComplexCB(ComplexCircularBuffer_struct *buffer, FIR_struct *filte
 		}
 		result += filter->Taps[i] * buffer->Buffer[j--];
 	}
-	return cabs(result);
+	return pow(creal(result),2) + pow(cimag(result),2);
 }
 
 

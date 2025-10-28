@@ -38,7 +38,7 @@ void InitToneCorrelator(FIR_struct *correlator, float freq, float sample_rate, f
 	}
 }
 
-float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
+int16_t DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrier_detect) {
 
 	// Place sample in circular buffer.
 	PutCB(&demod->Buffer1, sample);
@@ -47,6 +47,11 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	float result = FilterCB(&demod->Buffer1, &demod->InputFilter);
 
 
+	// Apply AGC
+	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, result);
+	if (envelope != 0) {
+		result = result / envelope;
+	}
 
 	// Place filtered sample in circular buffer.
 	PutCB(&demod->Buffer2, result);
@@ -60,12 +65,7 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	} else {
 		result2 = CMAEq(&demod->EQ, result2);
 	}
-	
-	// Apply AGC
-	float envelope = EnvelopeDetect(&demod->EnvelopeDetector, creal(result2));
-	if (envelope != 0) {
-		result2 = 4096 * result2 / envelope;
-	}
+
 	// Place quadrature signal in complex circular buffer.
 	PutComplexCB(&demod->Buffer3, result2);
 
@@ -75,14 +75,15 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 	// Apply the space correlator.
 	float space = CorrelateComplexCB(&demod->Buffer3, &demod->Space);
 
+
 	result = mark - space;
 
-	PutCB(&demod->Buffer4, result);
+	//PutCB(&demod->Buffer4, result);
 
-	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+	//result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
 
 
-	return result;
+	return result*256;
 }
 
 void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float low_cut, float high_cut, float tone1, float tone2, float symbol_rate, float output_cut, int cma_span, float cma_mu) {

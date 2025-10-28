@@ -56,7 +56,7 @@ typedef struct {
 void InitAFSK(FILE *, AFSKDemod_struct *, float, float, float, float, float, float, float, int, float);
 void InitAFSKPLL(FILE *, AFSKPLLDemod_struct *, float, float, float, float, float, float, float, float, float, int, float);
 void InitAFSKQuad(FILE *, AFSKQuadDemod_struct *, float, float, float, float, int, float);
-float DemodAFSK(FILE *, AFSKDemod_struct *, float, int);
+int16_t DemodAFSK(FILE *, AFSKDemod_struct *, float, int);
 float DemodAFSKPLL(FILE *, AFSKPLLDemod_struct *, float, int);
 float DemodAFSKQuad(FILE *, AFSKQuadDemod_struct *, float, int);
 void InitToneCorrelator(FIR_struct *, float , float , float );
