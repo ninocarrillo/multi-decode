@@ -77,6 +77,11 @@ float DemodAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample, int carrie
 
 	result = mark - space;
 
+	PutCB(&demod->Buffer4, result);
+
+	result = FilterCB(&demod->Buffer4, &demod->OutputFilter);
+
+
 	return result;
 }
 
@@ -171,11 +176,25 @@ void InitAFSK(FILE *logfile, AFSKDemod_struct *demod, float sample_rate, float l
 		LogString(logfile, ",");
 	}
 
+	// Create the output Lowpass filter spanning 3 milliseconds.
+	int output_tap_count = 0.003 * sample_rate;
+	GenLowPassFIR(&demod->OutputFilter, output_cut, sample_rate, output_tap_count);
+	LogNewline(logfile);
+	LogString(logfile, "Output filter tap count: ");
+	LogInt(logfile, demod->OutputFilter.TapCount);
+	LogNewline(logfile);
+	LogString(logfile, "Taps: ");
+	for (int i = 0; i < demod->OutputFilter.TapCount; i++) {
+		LogFloat(logfile, demod->OutputFilter.Taps[i]);
+		LogString(logfile, ",");
+	}
+
 
 	// Initialize buffers.
 	InitCB(&demod->Buffer1, demod->InputFilter.TapCount);
 	InitCB(&demod->Buffer2, demod->HilbertFilter.TapCount);
 	InitComplexCB(&demod->Buffer3, demod->Mark.TapCount);
+	InitCB(&demod->Buffer4, demod->OutputFilter.TapCount);
 
 	// Calculate the sample delay.
 	demod->SampleDelay = 0;

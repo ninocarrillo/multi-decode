@@ -142,8 +142,8 @@ int main(int arg_count, char* arg_values[]) {
 	);	
 	
 	float center_tone = 1700;
-	float tone_1 = center_tone - 250;
-	float tone_2 = center_tone + 250;
+	float tone_1 = center_tone - 500;
+	float tone_2 = center_tone + 500;
 
 	AFSKDemod_struct AFSKDemodulator1;
 	InitAFSK( \
